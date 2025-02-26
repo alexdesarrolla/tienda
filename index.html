@@ -1,0 +1,800 @@
+<html lang="es" data-theme="customTheme">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Gestión de Tienda</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@3.5.0/dist/full.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Add Supabase with correct script tag -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <!-- Loading indicator -->
+  <div id="loading-indicator" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+    <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-orange-web"></div>
+  </div>
+
+  <!-- Login Section -->
+  <section id="login-section" class="flex items-center justify-center min-h-screen bg-base-200">
+    <div class="card w-96 bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h1 class="card-title text-2xl font-bold text-center">Gestión de Tienda</h1>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Usuario</span>
+          </label>
+          <div class="input-group">
+            <span class="input-group-addon">
+              <i class="fas fa-user"></i>
+            </span>
+            <input id="username" type="text" placeholder="Usuario" class="input w-full" />
+          </div>
+        </div>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Contraseña</span>
+          </label>
+          <div class="input-group">
+            <span class="input-group-addon">
+              <i class="fas fa-lock"></i>
+            </span>
+            <input id="password" type="password" placeholder="Contraseña" class="input w-full" />
+          </div>
+        </div>
+        <div class="form-control mt-6">
+          <button id="login-btn" class="btn btn-primary w-full">Iniciar Sesión</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main App Section (Hidden initially) -->
+  <div id="app-container" class="hidden">
+    <div class="drawer lg:drawer-open">
+      <input id="drawer-toggle" type="checkbox" class="drawer-toggle" />
+      <div class="drawer-content flex flex-col">
+        <!-- Page content here -->
+        <div class="navbar bg-primary text-primary-content">
+          <div class="flex-none lg:hidden">
+            <label for="drawer-toggle" class="btn btn-square btn-ghost">
+              <i class="fas fa-bars"></i>
+            </label>
+          </div>
+          <div class="flex-1">
+            <a class="navbar-title font-bold text-xl">Gestión de Tienda</a>
+          </div>
+          <div class="flex-none">
+            <button id="logout-btn" class="btn btn-ghost">
+              <i class="fas fa-sign-out-alt mr-2"></i>
+              <span class="hidden sm:inline">Cerrar Sesión</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Content Sections -->
+        <div class="container mx-auto p-4">
+          <!-- Productos Section -->
+          <section id="productos-section" class="content-section">
+            <div class="flex justify-between items-center mb-4">
+              <h1 class="text-2xl font-bold">Gestión de Productos</h1>
+              <button class="btn btn-primary open-modal" data-modal="add-producto-modal">
+                <i class="fas fa-plus mr-1"></i> <span class="hidden sm:inline">Nuevo Producto</span>
+              </button>
+            </div>
+            
+            <!-- Search Box for Products -->
+            <div class="search-box mb-4">
+              <i class="fas fa-search search-icon"></i>
+              <input id="search-productos" type="text" placeholder="Buscar productos..." class="input input-bordered w-full" />
+            </div>
+            
+            <div class="table-container">
+              <table class="table w-full table-zebra table-responsive-sm">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Precio</th>
+                    <th>Stock</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="productos-table-body">
+                  <!-- Productos serán cargados dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Stock Section -->
+          <section id="stock-section" class="content-section hidden">
+            <div class="flex justify-between items-center mb-4">
+              <h1 class="text-2xl font-bold">Gestión de Stock</h1>
+              <button class="btn btn-primary open-modal" data-modal="add-stock-modal">
+                <i class="fas fa-plus mr-1"></i> <span class="hidden sm:inline">Actualizar Stock</span>
+              </button>
+            </div>
+            <div class="table-container">
+              <table class="table w-full table-zebra table-responsive-sm">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Producto</th>
+                    <th>Tipo</th>
+                    <th>Cantidad</th>
+                  </tr>
+                </thead>
+                <tbody id="stock-table-body">
+                  <!-- Movimientos serán cargados dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Clientes Section -->
+          <section id="clientes-section" class="content-section hidden">
+            <div class="flex justify-between items-center mb-4">
+              <h1 class="text-2xl font-bold">Gestión de Clientes</h1>
+              <button class="btn btn-primary open-modal" data-modal="add-cliente-modal">
+                <i class="fas fa-plus mr-1"></i> <span class="hidden sm:inline">Nuevo Cliente</span>
+              </button>
+            </div>
+            <div class="table-container">
+              <table class="table w-full table-zebra table-responsive-sm">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Detalles</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="clientes-table-body">
+                  <!-- Clientes serán cargados dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Ventas Section -->
+          <section id="ventas-section" class="content-section hidden">
+            <div class="flex justify-between items-center mb-4">
+              <h1 class="text-2xl font-bold">Gestión de Ventas</h1>
+              <button class="btn btn-primary open-modal" data-modal="add-venta-modal">
+                <i class="fas fa-plus mr-1"></i> <span class="hidden sm:inline">Nueva Venta</span>
+              </button>
+            </div>
+            
+            <!-- Search Box for Sales -->
+            <div class="search-box mb-4">
+              <i class="fas fa-search search-icon"></i>
+              <input id="search-ventas" type="text" placeholder="Buscar ventas por cliente o producto..." class="input input-bordered w-full" />
+            </div>
+            
+            <div class="table-container">
+              <table class="table w-full table-zebra table-responsive-sm">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Total</th>
+                    <th>Tipo</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="ventas-table-body">
+                  <!-- Ventas serán cargadas dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Fiados Section -->
+          <section id="fiados-section" class="content-section hidden">
+            <div class="flex justify-between items-center mb-4">
+              <h1 class="text-2xl font-bold">Gestión de Fiados</h1>
+              <button class="btn btn-primary open-modal" data-modal="pagar-fiado-modal">
+                <i class="fas fa-money-bill-wave mr-1"></i> <span class="hidden sm:inline">Pagar Fiado</span>
+              </button>
+            </div>
+            <div class="table-container">
+              <table class="table w-full table-zebra table-responsive-sm">
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Fecha</th>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Monto</th>
+                    <th>Notas</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="fiados-table-body">
+                  <!-- Fiados serán cargados dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Notas Section -->
+          <section id="notas-section" class="content-section hidden">
+            <div class="flex justify-between items-center mb-4">
+              <h1 class="text-2xl font-bold">Notas Internas</h1>
+              <button class="btn btn-primary open-modal" data-modal="add-nota-modal">
+                <i class="fas fa-plus mr-1"></i> <span class="hidden sm:inline">Nueva Nota</span>
+              </button>
+            </div>
+            <div id="notas-container" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
+              <!-- Notas serán cargadas dinámicamente -->
+            </div>
+          </section>
+
+          <!-- Análisis Section -->
+          <section id="analisis-section" class="content-section hidden">
+            <h1 class="text-2xl font-bold mb-4">Análisis de Ventas</h1>
+            
+            <div class="tabs tabs-boxed mb-4 overflow-x-auto whitespace-nowrap">
+              <a class="tab tab-active" data-tab="diario">Diario</a>
+              <a class="tab" data-tab="semanal">Semanal</a>
+              <a class="tab" data-tab="mensual">Mensual</a>
+              <a class="tab" data-tab="cliente">Por Cliente</a>
+            </div>
+
+            <div id="tab-diario" class="tab-content">
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                  <h2 class="card-title">Ventas del Día</h2>
+                  <div class="stats shadow mb-4 flex flex-col sm:flex-row">
+                    <div class="stat">
+                      <div class="stat-title">Total Ventas</div>
+                      <div class="stat-value" id="total-ventas-dia">0</div>
+                    </div>
+                    <div class="stat">
+                      <div class="stat-title">Monto Total</div>
+                      <div class="stat-value text-primary">$<span id="monto-ventas-dia">0.00</span></div>
+                    </div>
+                    <div class="stat">
+                      <div class="stat-title">Productos Vendidos</div>
+                      <div class="stat-value" id="productos-vendidos-dia">0</div>
+                    </div>
+                  </div>
+                  <div class="table-container">
+                    <table class="table w-full table-zebra table-responsive-sm">
+                      <thead>
+                        <tr>
+                          <th>Hora</th>
+                          <th>Producto</th>
+                          <th>Cantidad</th>
+                          <th>Total</th>
+                          <th>Notas</th>
+                        </tr>
+                      </thead>
+                      <tbody id="ventas-diarias-body">
+                        <!-- Ventas diarias serán cargadas dinámicamente -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="tab-semanal" class="tab-content hidden">
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                  <h2 class="card-title">Ventas de la Semana</h2>
+                  <div class="stats shadow mb-4 flex flex-col sm:flex-row">
+                    <div class="stat">
+                      <div class="stat-title">Total Ventas</div>
+                      <div class="stat-value" id="total-ventas-semana">0</div>
+                    </div>
+                    <div class="stat">
+                      <div class="stat-title">Monto Total</div>
+                      <div class="stat-value text-primary">$<span id="monto-ventas-semana">0.00</span></div>
+                    </div>
+                    <div class="stat">
+                      <div class="stat-title">Productos Vendidos</div>
+                      <div class="stat-value" id="productos-vendidos-semana">0</div>
+                    </div>
+                  </div>
+                  <div class="table-container">
+                    <table class="table w-full table-zebra table-responsive-sm">
+                      <thead>
+                        <tr>
+                          <th>Día</th>
+                          <th>Ventas</th>
+                          <th>Monto Total</th>
+                        </tr>
+                      </thead>
+                      <tbody id="ventas-semanales-body">
+                        <!-- Ventas semanales serán cargadas dinámicamente -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="tab-mensual" class="tab-content hidden">
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                  <h2 class="card-title">Ventas del Mes</h2>
+                  <div class="stats shadow mb-4 flex flex-col sm:flex-row">
+                    <div class="stat">
+                      <div class="stat-title">Total Ventas</div>
+                      <div class="stat-value" id="total-ventas-mes">0</div>
+                    </div>
+                    <div class="stat">
+                      <div class="stat-title">Monto Total</div>
+                      <div class="stat-value text-primary">$<span id="monto-ventas-mes">0.00</span></div>
+                    </div>
+                    <div class="stat">
+                      <div class="stat-title">Productos Vendidos</div>
+                      <div class="stat-value" id="productos-vendidos-mes">0</div>
+                    </div>
+                  </div>
+                  <div class="table-container">
+                    <table class="table w-full table-zebra table-responsive-sm">
+                      <thead>
+                        <tr>
+                          <th>Semana</th>
+                          <th>Ventas</th>
+                          <th>Monto Total</th>
+                        </tr>
+                      </thead>
+                      <tbody id="ventas-mensuales-body">
+                        <!-- Ventas mensuales serán cargadas dinámicamente -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="tab-cliente" class="tab-content hidden">
+              <div class="form-control w-full max-w-xs mb-4">
+                <label class="label">
+                  <span class="label-text">Cliente</span>
+                </label>
+                <select id="analisis-cliente-select" class="select select-bordered">
+                  <option value="">Seleccionar cliente</option>
+                </select>
+              </div>
+              <div id="cliente-analisis-container" class="hidden">
+                <div class="card bg-base-100 shadow-xl">
+                  <div class="card-body">
+                    <h2 class="card-title">Historial del Cliente</h2>
+                    <div class="stats shadow mb-4 flex flex-col sm:flex-row">
+                      <div class="stat">
+                        <div class="stat-title">Total Compras</div>
+                        <div class="stat-value" id="total-compras-cliente">0</div>
+                      </div>
+                      <div class="stat">
+                        <div class="stat-title">Monto Total</div>
+                        <div class="stat-value text-primary">$<span id="monto-total-cliente">0.00</span></div>
+                      </div>
+                      <div class="stat">
+                        <div class="stat-title">Saldo Pendiente</div>
+                        <div class="stat-value text-warning">$<span id="saldo-pendiente-cliente">0.00</span></div>
+                      </div>
+                    </div>
+                    <div class="table-container">
+                      <table class="table w-full table-zebra table-responsive-sm">
+                        <thead>
+                          <tr>
+                            <th>Fecha</th>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Total</th>
+                            <th>Notas</th>
+                            <th>Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody id="ventas-cliente-body">
+                          <!-- Ventas por cliente serán cargadas dinámicamente -->
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="drawer-side">
+        <label for="drawer-toggle" class="drawer-overlay"></label>
+        <ul class="menu p-4 w-80 h-full bg-base-200 text-base-content">
+          <li class="menu-title">
+            <span>Menú</span>
+          </li>
+          <li><a class="nav-link" data-target="productos-section"><i class="fas fa-box mr-2"></i>Productos</a></li>
+          <li><a class="nav-link" data-target="stock-section"><i class="fas fa-warehouse mr-2"></i>Stock</a></li>
+          <li><a class="nav-link" data-target="clientes-section"><i class="fas fa-users mr-2"></i>Clientes</a></li>
+          <li><a class="nav-link" data-target="ventas-section"><i class="fas fa-shopping-cart mr-2"></i>Ventas</a></li>
+          <li><a class="nav-link" data-target="fiados-section"><i class="fas fa-hand-holding-usd mr-2"></i>Fiados</a></li>
+          <li><a class="nav-link" data-target="notas-section"><i class="fas fa-sticky-note mr-2"></i>Notas</a></li>
+          <li><a class="nav-link" data-target="analisis-section"><i class="fas fa-chart-line mr-2"></i>Análisis</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+  <!-- Add Producto Modal -->
+  <div id="add-producto-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Agregar Producto</h3>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Nombre</span>
+        </label>
+        <input id="producto-nombre" type="text" placeholder="Nombre" class="input input-bordered w-full" />
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Precio</span>
+        </label>
+        <input id="producto-precio" type="number" placeholder="Precio" class="input input-bordered w-full" />
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Stock Inicial</span>
+        </label>
+        <input id="producto-stock" type="number" placeholder="Stock" class="input input-bordered w-full" />
+      </div>
+      <div class="modal-action">
+        <button id="agregar-producto-btn" class="btn btn-primary">Agregar</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Producto Modal -->
+  <div id="edit-producto-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Editar Producto</h3>
+      <input type="hidden" id="edit-producto-id">
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Nombre</span>
+        </label>
+        <input id="edit-producto-nombre" type="text" placeholder="Nombre" class="input input-bordered w-full" />
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Precio</span>
+        </label>
+        <input id="edit-producto-precio" type="number" placeholder="Precio" class="input input-bordered w-full" />
+      </div>
+      <div class="modal-action">
+        <button id="update-producto-btn" class="btn btn-primary">Actualizar</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Producto Modal -->
+  <div id="delete-producto-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Confirmar Eliminación</h3>
+      <p class="py-4">¿Está seguro de eliminar este producto?</p>
+      <input type="hidden" id="delete-producto-id">
+      <div class="modal-action">
+        <button id="confirm-delete-producto-btn" class="btn btn-error">Eliminar</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Cliente Modal -->
+  <div id="add-cliente-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Agregar Cliente</h3>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Nombre</span>
+        </label>
+        <input id="cliente-nombre" type="text" placeholder="Nombre" class="input input-bordered w-full" />
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Detalles</span>
+        </label>
+        <textarea id="cliente-detalles" placeholder="Detalles del cliente" class="textarea textarea-bordered w-full"></textarea>
+      </div>
+      <div class="modal-action">
+        <button id="agregar-cliente-btn" class="btn btn-primary">Agregar</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Cliente Modal -->
+  <div id="edit-cliente-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Editar Cliente</h3>
+      <input type="hidden" id="edit-cliente-id">
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Nombre</span>
+        </label>
+        <input id="edit-cliente-nombre" type="text" placeholder="Nombre" class="input input-bordered w-full" />
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Detalles</span>
+        </label>
+        <textarea id="edit-cliente-detalles" placeholder="Detalles del cliente" class="textarea textarea-bordered w-full"></textarea>
+      </div>
+      <div class="modal-action">
+        <button id="update-cliente-btn" class="btn btn-primary">Actualizar</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Cliente Modal -->
+  <div id="delete-cliente-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Confirmar Eliminación</h3>
+      <p class="py-4">¿Está seguro de eliminar este cliente?</p>
+      <input type="hidden" id="delete-cliente-id">
+      <div class="modal-action">
+        <button id="confirm-delete-cliente-btn" class="btn btn-error">Eliminar</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Stock Modal -->
+  <div id="add-stock-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Actualizar Stock</h3>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Producto</span>
+        </label>
+        <select id="stock-producto-select" class="select select-bordered w-full">
+          <option value="">Seleccionar producto</option>
+        </select>
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Tipo</span>
+        </label>
+        <select id="stock-tipo" class="select select-bordered w-full">
+          <option value="entrada">Entrada</option>
+          <option value="salida">Salida</option>
+        </select>
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Cantidad</span>
+        </label>
+        <input id="stock-cantidad" type="number" placeholder="Cantidad" class="input input-bordered w-full" />
+      </div>
+      <div class="modal-action">
+        <button id="actualizar-stock-btn" class="btn btn-primary">Actualizar</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Venta Modal -->
+  <div id="add-venta-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Nueva Venta</h3>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Cliente</span>
+        </label>
+        <input id="venta-cliente-input" type="text" placeholder="Buscar cliente..." class="input input-bordered w-full" />
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Producto</span>
+        </label>
+        <input id="venta-producto-input" type="text" placeholder="Buscar producto..." class="input input-bordered w-full" />
+      </div>
+      <div id="venta-producto-stock-container" class="mt-1 mb-3 text-sm hidden">
+        <span class="text-gray-600">Stock disponible: <span id="venta-producto-stock" class="font-semibold">0</span></span>
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Cantidad</span>
+        </label>
+        <input id="venta-cantidad" type="number" placeholder="Cantidad" class="input input-bordered w-full" />
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Notas de compra</span>
+        </label>
+        <textarea id="venta-notas" placeholder="Notas de la compra (opcional)" class="textarea textarea-bordered w-full"></textarea>
+      </div>
+      <div class="fiado-switch-container mt-4">
+        <span class="fiado-switch-label">Tipo de Venta</span>
+        <label class="fiado-switch">
+          <input id="venta-fiado" type="checkbox">
+          <span class="fiado-slider"></span>
+        </label>
+        <span id="fiado-status" class="fiado-status text-info">Contado</span>
+      </div>
+      <div class="modal-action">
+        <button id="agregar-venta-btn" class="btn btn-primary">Registrar</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Venta Modal -->
+  <div id="edit-venta-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Editar Venta</h3>
+      <input type="hidden" id="edit-venta-id">
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Cliente</span>
+        </label>
+        <input id="edit-venta-cliente-input" type="text" placeholder="Buscar cliente..." class="input input-bordered w-full" />
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Producto</span>
+        </label>
+        <input id="edit-venta-producto-input" type="text" placeholder="Buscar producto..." class="input input-bordered w-full" />
+      </div>
+      <div id="edit-venta-producto-stock-container" class="mt-1 mb-3 text-sm hidden">
+        <span class="text-gray-600">Stock disponible: <span id="edit-venta-producto-stock" class="font-semibold">0</span></span>
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Cantidad</span>
+        </label>
+        <input id="edit-venta-cantidad" type="number" placeholder="Cantidad" class="input input-bordered w-full" />
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Notas de compra</span>
+        </label>
+        <textarea id="edit-venta-notas" placeholder="Notas de la compra (opcional)" class="textarea textarea-bordered w-full"></textarea>
+      </div>
+      <div class="fiado-switch-container mt-4">
+        <span class="fiado-switch-label">Tipo de Venta</span>
+        <label class="fiado-switch">
+          <input id="edit-venta-fiado" type="checkbox">
+          <span class="fiado-slider"></span>
+        </label>
+        <span id="edit-fiado-status" class="fiado-status text-info">Contado</span>
+      </div>
+      <div class="modal-action">
+        <button id="update-venta-btn" class="btn btn-primary">Actualizar</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Venta Modal -->
+  <div id="delete-venta-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Confirmar Eliminación</h3>
+      <p class="py-4">¿Está seguro de eliminar esta venta? El stock del producto será devuelto.</p>
+      <input type="hidden" id="delete-venta-id">
+      <div class="modal-action">
+        <button id="confirm-delete-venta-btn" class="btn btn-error">Eliminar</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagar Fiado Modal -->
+  <div id="pagar-fiado-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Pagar Fiado</h3>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Cliente</span>
+        </label>
+        <select id="fiado-cliente-select" class="select select-bordered w-full">
+          <option value="">Seleccionar cliente</option>
+        </select>
+      </div>
+      <div id="fiado-detalles" class="hidden mt-4">
+        <div class="alert alert-info">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>Total pendiente: $<span id="fiado-monto-pendiente">0.00</span></span>
+        </div>
+        <div class="form-control w-full mt-4">
+          <label class="label">
+            <span class="label-text">Monto a pagar</span>
+          </label>
+          <input id="fiado-monto-pago" type="number" placeholder="Monto" class="input input-bordered w-full" />
+        </div>
+      </div>
+      <div class="modal-action">
+        <button id="pagar-fiado-btn" class="btn btn-primary">Pagar</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mark Fiado as Paid Modal -->
+  <div id="mark-fiado-paid-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Marcar como Pagado</h3>
+      <p class="py-4">¿Desea marcar este fiado como pagado?</p>
+      <input type="hidden" id="fiado-id-to-mark">
+      <div class="modal-action">
+        <button id="confirm-mark-paid-btn" class="btn btn-success">Marcar como Pagado</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Nota Modal -->
+  <div id="add-nota-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Nueva Nota</h3>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Título</span>
+        </label>
+        <input id="nota-titulo" type="text" placeholder="Título de la nota" class="input input-bordered w-full" />
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Contenido</span>
+        </label>
+        <textarea id="nota-contenido" placeholder="Contenido de la nota" class="textarea textarea-bordered w-full h-32"></textarea>
+      </div>
+      <div class="modal-action">
+        <button id="crear-nota-btn" class="btn btn-primary">Crear Nota</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Nota Modal -->
+  <div id="edit-nota-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Editar Nota</h3>
+      <input type="hidden" id="edit-nota-id">
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Título</span>
+        </label>
+        <input id="edit-nota-titulo" type="text" placeholder="Título de la nota" class="input input-bordered w-full" />
+      </div>
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Contenido</span>
+        </label>
+        <textarea id="edit-nota-contenido" placeholder="Contenido de la nota" class="textarea textarea-bordered w-full h-32"></textarea>
+      </div>
+      <div class="modal-action">
+        <button id="update-nota-btn" class="btn btn-primary">Actualizar Nota</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Nota Modal -->
+  <div id="delete-nota-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Confirmar Eliminación</h3>
+      <p class="py-4">¿Está seguro de eliminar esta nota?</p>
+      <input type="hidden" id="delete-nota-id">
+      <div class="modal-action">
+        <button id="confirm-delete-nota-btn" class="btn btn-error">Eliminar</button>
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

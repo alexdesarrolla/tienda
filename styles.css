@@ -1,0 +1,652 @@
+/* Custom color theme */
+:root {
+    --oxford-blue: #14213d;
+    --orange-web: #fca311;
+    --white: #ffffff;
+    --black: #000000;
+    --light-gray: #f8f9fa;
+  }
+  
+  /* DaisyUI theme customization */
+  [data-theme="customTheme"] {
+    --p: 221 51% 16%; /* oxford-blue as primary */
+    --pc: 0 0% 100%; /* white as primary content */
+    --s: 37 98% 53%; /* orange-web as secondary */
+    --sc: 0 0% 0%; /* black as secondary content */
+    --a: 37 98% 53%; /* orange-web as accent */
+    --ac: 0 0% 0%; /* black as accent content */
+    --n: 221 51% 16%; /* oxford-blue as neutral */
+    --nc: 0 0% 100%; /* white as neutral content */
+    --b1: 0 0% 100%; /* white as base-100 */
+    --b2: 0 0% 95%; /* light gray as base-200 */
+    --b3: 0 0% 90%; /* lighter gray as base-300 */
+    --bc: 0 0% 0%; /* black as base content */
+    
+    --in: 221 51% 50%; /* info - blue tint */
+    --su: 130 50% 50%; /* success */
+    --wa: 37 98% 53%; /* warning - orange-web */
+    --er: 0 91% 48%; /* error */
+  }
+  
+  body {
+    background-color: var(--white);
+    color: var(--black);
+  }
+  
+  /* Navbar styling */
+  .navbar {
+    background-color: var(--oxford-blue) !important;
+    color: var(--white) !important;
+  }
+  
+  /* Drawer/Sidebar styling */
+  .drawer-side .menu {
+    background-color: var(--oxford-blue) !important;
+    color: var(--white) !important;
+  }
+  
+  /* Button styling */
+  .btn-primary {
+    background-color: var(--orange-web) !important;
+    border-color: var(--orange-web) !important;
+    color: var(--black) !important;
+  }
+  
+  .btn-primary:hover {
+    background-color: #e69310 !important;
+    border-color: #e69310 !important;
+  }
+  
+  .btn-error {
+    background-color: #e63946 !important;
+    border-color: #e63946 !important;
+  }
+  
+  .btn-error:hover {
+    background-color: #d1333f !important;
+    border-color: #d1333f !important;
+  }
+  
+  /* Buttons for edit and delete with white icons */
+  .btn-info i, .btn-error i, .btn-success i {
+    color: white !important;
+  }
+  
+  /* Card and modal styling */
+  .card, .modal-box {
+    background-color: var(--white) !important;
+    border: 1px solid var(--light-gray);
+    border-radius: 10px !important;
+  }
+  
+  .stats {
+    background-color: var(--light-gray) !important;
+    border-radius: 10px !important;
+  }
+  
+  /* Enhanced table styling */
+  .table-container {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: 1px solid #e0e0e0;
+    margin-bottom: 1.5rem;
+  }
+  
+  .table {
+    width: 100%;
+    margin-bottom: 0 !important;
+  }
+  
+  .table th {
+    background-color: var(--oxford-blue) !important;
+    color: var(--white) !important;
+    padding: 12px 16px !important;
+    font-weight: 600;
+  }
+  
+  .table td {
+    padding: 10px 16px !important;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .table tr:hover {
+    background-color: rgba(229, 229, 229, 0.3);
+  }
+  
+  .table-zebra tbody tr:nth-child(even) {
+    background-color: rgba(229, 229, 229, 0.15);
+  }
+  
+  /* Tab styling */
+  .tabs-boxed .tab-active {
+    background-color: var(--orange-web) !important;
+    color: var(--black) !important;
+  }
+  
+  .tabs-boxed {
+    background-color: var(--light-gray) !important;
+    border-radius: 10px !important;
+  }
+  
+  /* Badge styling */
+  .badge-success {
+    background-color: #2a9d8f !important;
+    color: var(--white) !important;
+  }
+  
+  .badge-warning {
+    background-color: var(--orange-web) !important;
+    color: var(--black) !important;
+  }
+  
+  .badge-info {
+    background-color: var(--oxford-blue) !important;
+    color: var(--white) !important;
+  }
+  
+  .badge-error {
+    background-color: #e63946 !important;
+    color: var(--white) !important;
+  }
+  
+  .badge-outline {
+    color: var(--black) !important;
+    border-color: var(--black) !important;
+  }
+  
+  .text-primary {
+    color: var(--orange-web) !important;
+  }
+  
+  .text-warning {
+    color: var(--orange-web) !important;
+  }
+  
+  /* Modal styling */
+  .modal {
+    visibility: hidden;
+    opacity: 0;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    transition: all 0.4s;
+    z-index: 9999;
+    pointer-events: none;
+  }
+  
+  .modal.active {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  
+  .modal-box {
+    max-width: 500px;
+    width: 90%;
+    border-radius: 10px !important;
+    padding: 1.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    position: relative;
+    z-index: 10000;
+  }
+  
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+  }
+  
+  .hidden {
+    display: none !important;
+  }
+  
+  /* Form styling */
+  .input-group-addon {
+    display: flex;
+    align-items: center;
+    padding: 0 0.75rem;
+    background-color: var(--light-gray);
+    border: 1px solid var(--black);
+    border-right: none;
+    border-radius: 10px 0 0 10px;
+  }
+  
+  .input-group {
+    display: flex;
+  }
+  
+  .input-group input {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  
+  .input, .select, .textarea {
+    background-color: var(--white) !important;
+    border-color: #ccc !important;
+    color: var(--black) !important;
+    border-radius: 10px !important;
+  }
+  
+  .input:focus, .select:focus, .textarea:focus {
+    border-color: var(--orange-web) !important;
+    box-shadow: 0 0 0 3px rgba(252, 163, 17, 0.25) !important;
+  }
+  
+  .modal-action {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  
+  /* Menu hover state */
+  .drawer-side .menu a:hover {
+    background-color: var(--orange-web) !important;
+    color: white !important;
+  }
+  
+  /* Search box styling */
+  .search-box {
+    position: relative;
+    margin-bottom: 1rem;
+  }
+  
+  .search-box .input {
+    padding-left: 2.5rem;
+    width: 100%;
+  }
+  
+  .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #888;
+  }
+  
+  /* Responsive improvements */
+  @media (max-width: 768px) {
+    .stats {
+      flex-direction: column;
+    }
+    
+    .stat {
+      padding: 0.5rem;
+    }
+    
+    .stat-value {
+      font-size: 1.5rem;
+    }
+    
+    .modal-box {
+      width: 95%;
+      padding: 1rem;
+    }
+    
+    .card-body {
+      padding: 1rem;
+    }
+    
+    .table {
+      font-size: 0.8rem;
+    }
+    
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+    }
+    
+    .navbar-title {
+      font-size: 1.2rem;
+    }
+  }
+  
+  /* Enhanced Note Card Styling */
+  .note-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 10px !important;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 1.5rem;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .note-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12) !important;
+  }
+  
+  .note-card .card-body {
+    padding: 1.5rem;
+    border-top: 4px solid var(--orange-web);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .note-card .card-title {
+    font-weight: 600;
+    color: var(--oxford-blue);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+  }
+  
+  .note-card .card-content {
+    white-space: pre-line;
+    margin-bottom: 1rem;
+    color: #333;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    flex: 1;
+  }
+  
+  .note-card .card-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(0,0,0,0.05);
+  }
+  
+  .note-card .card-actions .note-date {
+    color: #666;
+    font-size: 0.85rem;
+    font-style: italic;
+  }
+  
+  .note-card .note-actions {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .note-card .note-actions button {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+  
+  .note-card .note-actions button:hover {
+    opacity: 1;
+  }
+  
+  /* Enhanced note action buttons */
+  .btn-note-action {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  
+  /* Note editor styling improvements */
+  #nota-contenido, #edit-nota-contenido {
+    min-height: 120px;
+    font-family: inherit;
+    line-height: 1.5;
+    padding: 1rem;
+  }
+  
+  #add-nota-modal .modal-box, #edit-nota-modal .modal-box {
+    max-width: 600px;
+  }
+  
+  /* Empty notes state styling */
+  .notes-empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    background-color: rgba(252, 163, 17, 0.05);
+    border-radius: 10px;
+    border: 1px dashed var(--orange-web);
+    width: 100%;
+  }
+  
+  .notes-empty-state i {
+    font-size: 3rem;
+    color: var(--orange-web);
+    margin-bottom: 1rem;
+    opacity: 0.7;
+  }
+  
+  .notes-empty-state h3 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--oxford-blue);
+  }
+  
+  .notes-empty-state p {
+    color: #666;
+    margin-bottom: 1.5rem;
+  }
+  
+  .notes-empty-state .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+  }
+  
+  /* Notes grid updated to ensure each card is exactly 1/4 width on desktop */
+  .notes-grid {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 1.5rem;
+    width: 100%;
+  }
+  
+  @media (min-width: 768px) {
+    .notes-grid {
+  
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .notes-grid {
+
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .notes-grid {
+      width: 100%;
+    }
+  }
+  
+  /* Login card styling */
+  #login-section .card {
+    background-color: var(--white) !important;
+    border: 1px solid var(--light-gray);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    border-radius: 10px !important;
+  }
+  
+  /* Login form styling - Fix border radius and background issues */
+  #login-section .input-group-addon {
+    border-radius: 0;
+  }
+  
+  #login-section .input-group input {
+    border-radius: 0 !important;
+    background-color: var(--white) !important;
+  }
+  
+  #login-section .input-group {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #ccc;
+  }
+  
+  #login-section .input-group-addon {
+    border: none;
+    background-color: var(--white);
+  }
+  
+  /* Input autofill background fix */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px white inset !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+  
+  /* Nav link styling */
+  .nav-link.active, .nav-link:hover {
+    background-color: var(--orange-web) !important;
+    color: var(--black) !important;
+  }
+  
+  .drawer-side .menu-title {
+    color: var(--white);
+    opacity: 0.8;
+  }
+  
+  .alert-info {
+    background-color: var(--oxford-blue) !important;
+    color: var(--white) !important;
+    border-radius: 10px !important;
+  }
+  
+  /* Autocomplete dropdown styling */
+  .autocomplete-container {
+    position: relative;
+    width: 100%;
+  }
+  
+  .autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  
+  .autocomplete-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .autocomplete-item:hover, .autocomplete-item.selected {
+    background-color: #f5f5f5;
+  }
+  
+  .autocomplete-item:last-child {
+    border-bottom: none;
+  }
+  
+  /* Enhanced fiado switch styling */
+  .fiado-switch-container {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-radius: 10px;
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    margin: 15px 0;
+  }
+  
+  .fiado-switch-label {
+    margin-right: auto;
+    font-weight: 500;
+  }
+  
+  .fiado-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 30px;
+  }
+  
+  .fiado-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  .fiado-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+  }
+  
+  .fiado-slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  
+  input:checked + .fiado-slider {
+    background-color: var(--orange-web);
+  }
+  
+  input:focus + .fiado-slider {
+    box-shadow: 0 0 1px var(--orange-web);
+  }
+  
+  input:checked + .fiado-slider:before {
+    transform: translateX(30px);
+  }
+  
+  .fiado-status {
+    margin-left: 10px;
+    font-weight: 500;
+  }
+  
+  /* Mobile responsive tables */
+  @media (max-width: 640px) {
+    .table-responsive-sm {
+      display: block;
+      width: 100%;
+      overflow-x: auto;
+    }
+    
+    .table-responsive-sm th,
+    .table-responsive-sm td {
+      white-space: nowrap;
+    }
+  }
+  
+  .whitespace-pre-line {
+    white-space: pre-line;
+  }
