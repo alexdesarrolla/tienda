@@ -229,8 +229,16 @@
                 <i class="fas fa-plus mr-1"></i> <span class="hidden sm:inline">Nueva Nota</span>
               </button>
             </div>
-            <div id="notas-container" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4">
+            <div id="notas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
               <!-- Notas serán cargadas dinámicamente -->
+            </div>
+            <div class="notes-empty-state hidden">
+              <i class="fas fa-sticky-note"></i>
+              <h3>No hay notas guardadas</h3>
+              <p>Crea tu primera nota para empezar a organizar tus ideas</p>
+              <button class="btn btn-primary" id="empty-state-create-note-btn">
+                Crear Nota
+              </button>
             </div>
           </section>
 
@@ -412,17 +420,29 @@
           <li class="menu-title">
             <span>Menú</span>
           </li>
-          <li><a class="nav-link" data-target="productos-section"><i class="fas fa-box mr-2"></i>Productos</a></li>
-          <li><a class="nav-link" data-target="stock-section"><i class="fas fa-warehouse mr-2"></i>Stock</a></li>
-          <li><a class="nav-link" data-target="clientes-section"><i class="fas fa-users mr-2"></i>Clientes</a></li>
           <li><a class="nav-link" data-target="ventas-section"><i class="fas fa-shopping-cart mr-2"></i>Ventas</a></li>
           <li><a class="nav-link" data-target="fiados-section"><i class="fas fa-hand-holding-usd mr-2"></i>Fiados</a></li>
           <li><a class="nav-link" data-target="notas-section"><i class="fas fa-sticky-note mr-2"></i>Notas</a></li>
           <li><a class="nav-link" data-target="analisis-section"><i class="fas fa-chart-line mr-2"></i>Análisis</a></li>
+          <li><a href="catalog.html"><i class="fas fa-book-open mr-2"></i>Catálogo</a></li>
         </ul>
       </div>
     </div>
   </div>
+
+  <!-- Catalog Section -->
+  <section id="catalog-section" class="content-section hidden">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold">Catálogo de Productos</h1>
+      <div class="search-box w-72">
+        <i class="fas fa-search search-icon"></i>
+        <input id="search-catalog" type="text" placeholder="Buscar productos..." class="input input-bordered w-full" />
+      </div>
+    </div>
+    <div id="catalog-container">
+      <!-- Products will be loaded dynamically -->
+    </div>
+  </section>
 
   <!-- MODALS -->
   <!-- Add Producto Modal -->
@@ -593,13 +613,22 @@
         <label class="label">
           <span class="label-text">Cliente</span>
         </label>
-        <input id="venta-cliente-input" type="text" placeholder="Buscar cliente..." class="input input-bordered w-full" />
+        <div class="flex gap-2">
+          <input id="venta-cliente-input" type="text" placeholder="Cliente seleccionado" class="input input-bordered w-full" readonly />
+          <button id="open-cliente-selector" class="btn btn-primary">Seleccionar</button>
+        </div>
       </div>
+      
+      <div class="divider">Agregar Productos</div>
+      
       <div class="form-control w-full">
         <label class="label">
           <span class="label-text">Producto</span>
         </label>
-        <input id="venta-producto-input" type="text" placeholder="Buscar producto..." class="input input-bordered w-full" />
+        <div class="flex gap-2">
+          <input id="venta-producto-input" type="text" placeholder="Producto seleccionado" class="input input-bordered w-full" readonly />
+          <button id="open-producto-selector" class="btn btn-primary">Seleccionar</button>
+        </div>
       </div>
       <div id="venta-producto-stock-container" class="mt-1 mb-3 text-sm hidden">
         <span class="text-gray-600">Stock disponible: <span id="venta-producto-stock" class="font-semibold">0</span></span>
@@ -608,9 +637,38 @@
         <label class="label">
           <span class="label-text">Cantidad</span>
         </label>
-        <input id="venta-cantidad" type="number" placeholder="Cantidad" class="input input-bordered w-full" />
+        <div class="flex gap-2">
+          <input id="venta-cantidad" type="number" placeholder="Cantidad" class="input input-bordered w-full" />
+          <button id="add-to-cart-btn" class="btn btn-primary" disabled>Agregar</button>
+        </div>
       </div>
-      <div class="form-control w-full">
+      
+      <div class="divider">Carrito</div>
+      
+      <div class="cart-table">
+        <table class="table w-full table-zebra">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Cantidad</th>
+              <th>Precio Unit.</th>
+              <th>Subtotal</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="cart-items-body">
+            <tr>
+              <td colspan="5" class="text-center py-4">El carrito está vacío</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="cart-footer">
+          <span class="cart-total-label">Total:</span>
+          <span class="cart-total-value">$<span id="cart-total">0.00</span></span>
+        </div>
+      </div>
+      
+      <div class="form-control w-full mt-4">
         <label class="label">
           <span class="label-text">Notas de compra</span>
         </label>
@@ -640,13 +698,19 @@
         <label class="label">
           <span class="label-text">Cliente</span>
         </label>
-        <input id="edit-venta-cliente-input" type="text" placeholder="Buscar cliente..." class="input input-bordered w-full" />
+        <div class="flex gap-2">
+          <input id="edit-venta-cliente-input" type="text" placeholder="Cliente seleccionado" class="input input-bordered w-full" readonly />
+          <button id="open-edit-cliente-selector" class="btn btn-primary">Seleccionar</button>
+        </div>
       </div>
       <div class="form-control w-full">
         <label class="label">
           <span class="label-text">Producto</span>
         </label>
-        <input id="edit-venta-producto-input" type="text" placeholder="Buscar producto..." class="input input-bordered w-full" />
+        <div class="flex gap-2">
+          <input id="edit-venta-producto-input" type="text" placeholder="Producto seleccionado" class="input input-bordered w-full" readonly />
+          <button id="open-edit-producto-selector" class="btn btn-primary">Seleccionar</button>
+        </div>
       </div>
       <div id="edit-venta-producto-stock-container" class="mt-1 mb-3 text-sm hidden">
         <span class="text-gray-600">Stock disponible: <span id="edit-venta-producto-stock" class="font-semibold">0</span></span>
@@ -791,6 +855,79 @@
       <div class="modal-action">
         <button id="confirm-delete-nota-btn" class="btn btn-error">Eliminar</button>
         <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cliente Selector Modal -->
+  <div id="cliente-selector-modal" class="modal">
+    <div class="modal-box max-w-3xl">
+      <h3 class="font-bold text-lg">Seleccionar Cliente</h3>
+      <div class="form-control w-full mb-4">
+        <div class="search-box">
+          <i class="fas fa-search search-icon"></i>
+          <input id="search-cliente-selector" type="text" placeholder="Buscar cliente..." class="input input-bordered w-full" />
+        </div>
+      </div>
+      <div class="overflow-x-auto max-h-96">
+        <table class="table w-full table-zebra">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="cliente-selector-table">
+            <!-- Clientes serán cargados dinámicamente -->
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-action">
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Producto Selector Modal -->
+  <div id="producto-selector-modal" class="modal">
+    <div class="modal-box max-w-3xl">
+      <h3 class="font-bold text-lg">Seleccionar Producto</h3>
+      <div class="form-control w-full mb-4">
+        <div class="search-box">
+          <i class="fas fa-search search-icon"></i>
+          <input id="search-producto-selector" type="text" placeholder="Buscar producto..." class="input input-bordered w-full" />
+        </div>
+      </div>
+      <div class="overflow-x-auto max-h-96">
+        <table class="table w-full table-zebra">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Precio</th>
+              <th>Stock</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="producto-selector-table">
+            <!-- Productos serán cargados dinámicamente -->
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-action">
+        <button class="btn close-modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Modal -->
+  <div id="receipt-modal" class="modal">
+    <div class="modal-box">
+      <div id="receipt-container">
+        <!-- Receipt will be generated here -->
+      </div>
+      <div class="modal-action">
+        <button class="btn close-modal">Cerrar</button>
       </div>
     </div>
   </div>

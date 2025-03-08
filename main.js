@@ -17,6 +17,9 @@ const store = {
   movimientosStock: [],
   notas: [],
   
+  // Shopping cart for current sale
+  currentCart: [],
+  
   // Get next ID for a collection - Now used as fallback only
   getNextId: function(collection) {
     if (!collection || collection.length === 0) return 1;
@@ -65,6 +68,33 @@ const store = {
   clearSession: function() {
     localStorage.removeItem('tiendaAppSession');
     this.currentUser = null;
+  },
+  
+  // Add item to cart
+  addToCart: function(product, quantity) {
+    const existingItem = this.currentCart.find(item => item.productoId === product.id);
+    if (existingItem) {
+      existingItem.cantidad += parseInt(quantity);
+      existingItem.subtotal = (existingItem.cantidad * existingItem.precioUnitario).toFixed(2);
+    } else {
+      this.currentCart.push({
+        productoId: product.id,
+        nombre: product.nombre,
+        cantidad: parseInt(quantity),
+        precioUnitario: parseFloat(product.precio),
+        subtotal: (parseInt(quantity) * parseFloat(product.precio)).toFixed(2)
+      });
+    }
+  },
+  
+  // Clear shopping cart
+  clearCart: function() {
+    this.currentCart = [];
+  },
+  
+  // Calculate cart total
+  getCartTotal: function() {
+    return this.currentCart.reduce((total, item) => total + parseFloat(item.subtotal), 0).toFixed(2);
   }
 };
 
@@ -379,162 +409,13 @@ const modalManager = {
   }
 };
 
-// Autocomplete component - remains the same
-const autocomplete = {
-  createAutocomplete: function(inputId, dataSource, displayProperty, valueProperty, onSelectCallback) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-    
-    // Create container and results div
-    const container = document.createElement('div');
-    container.className = 'autocomplete-container';
-    const resultsDiv = document.createElement('div');
-    resultsDiv.className = 'autocomplete-results hidden';
-    
-    // Insert the new elements around the input
-    input.parentNode.insertBefore(container, input);
-    container.appendChild(input);
-    container.appendChild(resultsDiv);
-    
-    // Store the selected item value
-    let selectedValue = '';
-    
-    // Input event handlers
-    input.addEventListener('input', function() {
-      const searchText = this.value.toLowerCase().trim();
-      if (searchText.length < 1) {
-        resultsDiv.innerHTML = '';
-        resultsDiv.classList.add('hidden');
-        selectedValue = '';
-        return;
-      }
-      
-      // Get matches from the data source
-      let matches;
-      if (typeof dataSource === 'function') {
-        matches = dataSource(searchText);
-      } else {
-        matches = dataSource.filter(item => 
-          item[displayProperty].toLowerCase().includes(searchText)
-        );
-      }
-      
-      // Limit results
-      matches = matches.slice(0, 10);
-      
-      // Clear previous results
-      resultsDiv.innerHTML = '';
-      
-      if (matches.length > 0) {
-        // Populate results
-        matches.forEach(item => {
-          const resultItem = document.createElement('div');
-          resultItem.className = 'autocomplete-item';
-          resultItem.textContent = item[displayProperty];
-          resultItem.dataset.value = item[valueProperty];
-          
-          resultItem.addEventListener('click', function() {
-            input.value = item[displayProperty];
-            selectedValue = item[valueProperty];
-            resultsDiv.classList.add('hidden');
-            if (onSelectCallback) onSelectCallback(item);
-          });
-          
-          resultsDiv.appendChild(resultItem);
-        });
-        
-        resultsDiv.classList.remove('hidden');
-      } else {
-        resultsDiv.classList.add('hidden');
-      }
-    });
-    
-    // Handle keyboard navigation
-    input.addEventListener('keydown', function(e) {
-      if (resultsDiv.classList.contains('hidden')) return;
-      
-      const items = resultsDiv.querySelectorAll('.autocomplete-item');
-      let selected = resultsDiv.querySelector('.selected');
-      let index = -1;
-      
-      if (selected) {
-        for (let i = 0; i < items.length; i++) {
-          if (items[i] === selected) {
-            index = i;
-            break;
-          }
-        }
-      }
-      
-      // Arrow down
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (selected) selected.classList.remove('selected');
-        index = (index + 1) % items.length;
-        items[index].classList.add('selected');
-        items[index].scrollIntoView({ block: 'nearest' });
-      }
-      
-      // Arrow up
-      else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (selected) selected.classList.remove('selected');
-        index = (index - 1 + items.length) % items.length;
-        items[index].classList.add('selected');
-        items[index].scrollIntoView({ block: 'nearest' });
-      }
-      
-      // Enter
-      else if (e.key === 'Enter' && selected) {
-        e.preventDefault();
-        input.value = selected.textContent;
-        selectedValue = selected.dataset.value;
-        resultsDiv.classList.add('hidden');
-        if (onSelectCallback) onSelectCallback({
-          [displayProperty]: selected.textContent,
-          [valueProperty]: selected.dataset.value
-        });
-      }
-      
-      // Escape
-      else if (e.key === 'Escape') {
-        resultsDiv.classList.add('hidden');
-      }
-    });
-    
-    // Hide results when clicking outside
-    document.addEventListener('click', function(e) {
-      if (!container.contains(e.target)) {
-        resultsDiv.classList.add('hidden');
-      }
-    });
-    
-    // Public methods
-    return {
-      getValue: function() {
-        return selectedValue;
-      },
-      setValue: function(value, text) {
-        selectedValue = value;
-        input.value = text;
-      },
-      clear: function() {
-        input.value = '';
-        selectedValue = '';
-        resultsDiv.innerHTML = '';
-        resultsDiv.classList.add('hidden');
-      }
-    };
-  }
-};
-
 // UI Manager - updated notas display
 const ui = {
-  // Autocomplete instances
-  clienteAutocomplete: null,
-  productoAutocomplete: null,
-  editClienteAutocomplete: null,
-  editProductoAutocomplete: null,
+  // Selector values storage
+  selectedClienteId: null,
+  selectedProductoId: null,
+  selectedEditClienteId: null,
+  selectedEditProductoId: null,
   
   // Show/hide sections
   showSection: function(sectionId) {
@@ -566,110 +447,109 @@ const ui = {
     // Setup realtime subscriptions
     dataManager.setupRealtimeSubscription();
     
-    // Initialize autocomplete components
-    this.initializeAutocompletes();
+    // Initialize selectors events
+    document.getElementById('open-cliente-selector').addEventListener('click', function() {
+      ui.displayClienteSelector(false);
+    });
+    
+    document.getElementById('open-producto-selector').addEventListener('click', function() {
+      ui.displayProductoSelector(false);
+    });
+    
+    document.getElementById('open-edit-cliente-selector').addEventListener('click', function() {
+      ui.displayClienteSelector(true);
+    });
+    
+    document.getElementById('open-edit-producto-selector').addEventListener('click', function() {
+      ui.displayProductoSelector(true);
+    });
+    
+    document.getElementById('search-cliente-selector').addEventListener('input', function() {
+      ui.filterClienteSelector(this.value);
+    });
+    
+    document.getElementById('search-producto-selector').addEventListener('input', function() {
+      ui.filterProductoSelector(this.value);
+    });
   },
   
   // Initialize autocompletes
   initializeAutocompletes: function() {
-    // Client autocomplete for new sale
-    this.clienteAutocomplete = autocomplete.createAutocomplete(
-      'venta-cliente-input',
-      store.clientes,
-      'nombre',
-      'id',
-      null
-    );
-    
-    // Product autocomplete for new sale
-    this.productoAutocomplete = autocomplete.createAutocomplete(
-      'venta-producto-input',
-      store.productos,
-      'nombre',
-      'id',
-      (item) => {
-        // Optionally update quantity max or display stock info
-        const producto = store.productos.find(p => p.id === parseInt(item.id));
-        if (producto) {
-          document.getElementById('venta-producto-stock').textContent = producto.stock;
-          document.getElementById('venta-producto-stock-container').classList.remove('hidden');
-        }
-      }
-    );
-    
-    // Client autocomplete for edit sale
-    this.editClienteAutocomplete = autocomplete.createAutocomplete(
-      'edit-venta-cliente-input',
-      store.clientes,
-      'nombre',
-      'id',
-      null
-    );
-    
-    // Product autocomplete for edit sale
-    this.editProductoAutocomplete = autocomplete.createAutocomplete(
-      'edit-venta-producto-input',
-      store.productos,
-      'nombre',
-      'id',
-      (item) => {
-        // Optionally update quantity max or display stock info
-        const producto = store.productos.find(p => p.id === parseInt(item.id));
-        if (producto) {
-          document.getElementById('edit-venta-producto-stock').textContent = producto.stock;
-          document.getElementById('edit-venta-producto-stock-container').classList.remove('hidden');
-        }
-      }
-    );
+    // We'll keep this empty for now as we're replacing with selectors
   },
   
-  // Tab management - remains the same
-  showTab: function(tabId) {
-    document.querySelectorAll('.tab-content').forEach(tab => {
-      tab.classList.add('hidden');
-    });
-    document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+  // Display selector modals
+  displayClienteSelector: function(isEdit = false) {
+    const tbody = document.getElementById('cliente-selector-table');
+    if (!tbody) return;
     
-    // Update active tab
-    document.querySelectorAll('.tabs .tab').forEach(tab => {
-      tab.classList.remove('tab-active');
-    });
-    document.querySelector(`.tabs .tab[data-tab="${tabId}"]`).classList.add('tab-active');
-  },
-  
-  // Populate select elements - remains the same
-  populateProductoSelect: function(selectId) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">Seleccionar producto</option>';
-    
-    store.productos.forEach(producto => {
-      const option = document.createElement('option');
-      option.value = producto.id;
-      option.textContent = `${producto.nombre} ($${producto.precio})`;
-      select.appendChild(option);
-    });
-  },
-  
-  populateClienteSelect: function(selectId) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">Seleccionar cliente</option>';
+    tbody.innerHTML = '';
     
     store.clientes.forEach(cliente => {
-      const option = document.createElement('option');
-      option.value = cliente.id;
-      option.textContent = cliente.nombre;
-      select.appendChild(option);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${cliente.id}</td>
+        <td>${cliente.nombre}</td>
+        <td>
+          <button class="btn btn-sm btn-primary select-cliente" data-id="${cliente.id}" data-name="${cliente.nombre}" data-edit="${isEdit}">
+            <i class="fas fa-check mr-1"></i> Seleccionar
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
     });
+    
+    modalManager.openModal('cliente-selector-modal');
   },
   
-  // Search functionality - remains the same
-  filterProductos: function(searchTerm) {
+  displayProductoSelector: function(isEdit = false) {
+    const tbody = document.getElementById('producto-selector-table');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    store.productos.forEach(producto => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${producto.nombre}</td>
+        <td>$${parseFloat(producto.precio).toFixed(2)}</td>
+        <td>${producto.stock}</td>
+        <td>
+          <button class="btn btn-sm btn-primary select-producto" 
+            data-id="${producto.id}" 
+            data-name="${producto.nombre}" 
+            data-stock="${producto.stock}"
+            data-edit="${isEdit}">
+            <i class="fas fa-check mr-1"></i> Seleccionar
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+    modalManager.openModal('producto-selector-modal');
+  },
+  
+  // Filter selector results
+  filterClienteSelector: function(searchTerm) {
     searchTerm = searchTerm.toLowerCase().trim();
-    const tbody = document.getElementById('productos-table-body');
+    const tbody = document.getElementById('cliente-selector-table');
+    if (!tbody) return;
+    
+    const rows = tbody.getElementsByTagName('tr');
+    for (let i = 0; i < rows.length; i++) {
+      const clientName = rows[i].getElementsByTagName('td')[1].textContent.toLowerCase();
+      if (clientName.includes(searchTerm)) {
+        rows[i].style.display = '';
+      } else {
+        rows[i].style.display = 'none';
+      }
+    }
+  },
+  
+  filterProductoSelector: function(searchTerm) {
+    searchTerm = searchTerm.toLowerCase().trim();
+    const tbody = document.getElementById('producto-selector-table');
     if (!tbody) return;
     
     const rows = tbody.getElementsByTagName('tr');
@@ -683,21 +563,34 @@ const ui = {
     }
   },
   
-  filterVentas: function(searchTerm) {
-    searchTerm = searchTerm.toLowerCase().trim();
-    const tbody = document.getElementById('ventas-table-body');
-    if (!tbody) return;
-    
-    const rows = tbody.getElementsByTagName('tr');
-    for (let i = 0; i < rows.length; i++) {
-      const clienteName = rows[i].getElementsByTagName('td')[1].textContent.toLowerCase();
-      const productName = rows[i].getElementsByTagName('td')[2].textContent.toLowerCase();
-      if (clienteName.includes(searchTerm) || productName.includes(searchTerm)) {
-        rows[i].style.display = '';
-      } else {
-        rows[i].style.display = 'none';
-      }
-    }
+  // Update venta form with selected values
+  updateVentaClienteSelection: function(clienteId, clienteName) {
+    this.selectedClienteId = clienteId;
+    document.getElementById('venta-cliente-input').value = clienteName;
+    modalManager.closeModal('cliente-selector-modal');
+  },
+  
+  updateVentaProductoSelection: function(productoId, productoName, stock) {
+    this.selectedProductoId = productoId;
+    document.getElementById('venta-producto-input').value = productoName;
+    document.getElementById('venta-producto-stock').textContent = stock;
+    document.getElementById('venta-producto-stock-container').classList.remove('hidden');
+    document.getElementById('add-to-cart-btn').disabled = false;
+    modalManager.closeModal('producto-selector-modal');
+  },
+  
+  updateEditVentaClienteSelection: function(clienteId, clienteName) {
+    this.selectedEditClienteId = clienteId;
+    document.getElementById('edit-venta-cliente-input').value = clienteName;
+    modalManager.closeModal('cliente-selector-modal');
+  },
+  
+  updateEditVentaProductoSelection: function(productoId, productoName, stock) {
+    this.selectedEditProductoId = productoId;
+    document.getElementById('edit-venta-producto-input').value = productoName;
+    document.getElementById('edit-venta-producto-stock').textContent = stock;
+    document.getElementById('edit-venta-producto-stock-container').classList.remove('hidden');
+    modalManager.closeModal('producto-selector-modal');
   },
   
   // Data display methods - unchanged but using Supabase data
@@ -724,11 +617,6 @@ const ui = {
       `;
       tbody.appendChild(tr);
     });
-    
-    // Update selects with the new products
-    this.populateProductoSelect('stock-producto-select');
-    this.populateProductoSelect('venta-producto-select');
-    this.populateProductoSelect('edit-venta-producto-select');
   },
   
   displayClientes: function() {
@@ -754,12 +642,6 @@ const ui = {
       `;
       tbody.appendChild(tr);
     });
-    
-    // Update selects with the new clients
-    this.populateClienteSelect('venta-cliente-select');
-    this.populateClienteSelect('edit-venta-cliente-select');
-    this.populateClienteSelect('fiado-cliente-select');
-    this.populateClienteSelect('analisis-cliente-select');
   },
   
   displayStockMovimientos: function() {
@@ -803,8 +685,8 @@ const ui = {
       tr.innerHTML = `
         <td>${new Date(venta.fecha).toLocaleString()}</td>
         <td>${cliente ? cliente.nombre : 'Cliente eliminado'}</td>
-        <td>${producto ? producto.nombre : 'Producto eliminado'}</td>
-        <td>${venta.cantidad}</td>
+        <td>${venta.multipleProducts ? 'Múltiples productos' : (producto ? producto.nombre : 'Producto eliminado')}</td>
+        <td>${venta.multipleProducts ? '-' : venta.cantidad}</td>
         <td>$${parseFloat(venta.total).toFixed(2)}</td>
         <td>${venta.fiado ? 
           (venta.pagado ? '<span class="badge badge-success">Fiado Pagado</span>' : 
@@ -812,6 +694,9 @@ const ui = {
           '<span class="badge badge-info">Contado</span>'}
         </td>
         <td>
+          <button class="btn btn-sm btn-primary view-receipt" data-id="${venta.id}">
+            <i class="fas fa-receipt"></i>
+          </button>
           <button class="btn btn-sm btn-info edit-venta" data-id="${venta.id}">
             <i class="fas fa-edit"></i>
           </button>
@@ -861,10 +746,7 @@ const ui = {
     
     notasContainer.innerHTML = '';
     
-    // Sort by date, newest first (should already be sorted from Supabase)
-    const notas = store.notas;
-    
-    if (notas.length === 0) {
+    if (store.notas.length === 0) {
       // Show "no notes" message with improved styling
       const emptyMessage = document.createElement('div');
       emptyMessage.className = 'notes-empty-state';
@@ -879,23 +761,18 @@ const ui = {
       notasContainer.appendChild(emptyMessage);
       
       // Add event listener to the button
-      setTimeout(() => {
-        const emptyStateBtn = document.getElementById('empty-state-create-note-btn');
-        if (emptyStateBtn) {
-          emptyStateBtn.addEventListener('click', function() {
-            modalManager.openModal('add-nota-modal');
-          });
-        }
-      }, 100);
+      document.getElementById('empty-state-create-note-btn').addEventListener('click', function() {
+        modalManager.openModal('add-nota-modal');
+      });
       
       return;
     }
     
     // Create grid layout for notes
     const notesGrid = document.createElement('div');
-    notesGrid.className = 'notes-grid'; // Using our custom grid class
+    notesGrid.className = 'notes-grid'; // Changed from grid classes to our custom class
     
-    notas.forEach(nota => {
+    store.notas.forEach(nota => {
       const notaCard = document.createElement('div');
       notaCard.className = 'card note-card bg-base-100 shadow-xl';
       notaCard.innerHTML = `
@@ -1200,6 +1077,105 @@ const ui = {
       statusElement.textContent = isChecked ? 'Fiado' : 'Contado';
       statusElement.className = isChecked ? 'fiado-status text-warning' : 'fiado-status text-info';
     }
+  },
+  
+  // Display cart items in modal
+  displayCart: function() {
+    const tbody = document.getElementById('cart-items-body');
+    const totalElement = document.getElementById('cart-total');
+    if (!tbody || !totalElement) return;
+    
+    tbody.innerHTML = '';
+    
+    if (store.currentCart.length === 0) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td colspan="5" class="text-center py-4">El carrito está vacío</td>
+      `;
+      tbody.appendChild(tr);
+      totalElement.textContent = '0.00';
+      return;
+    }
+    
+    store.currentCart.forEach((item, index) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${item.nombre}</td>
+        <td>${item.cantidad}</td>
+        <td>$${item.precioUnitario.toFixed(2)}</td>
+        <td>$${item.subtotal}</td>
+        <td>
+          <button class="btn btn-xs btn-error remove-cart-item" data-index="${index}">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+    totalElement.textContent = store.getCartTotal();
+  },
+  
+  // Generate receipt HTML
+  generateReceiptHTML: function(venta, cliente, items) {
+    const fecha = new Date(venta.fecha).toLocaleString();
+    const ventaId = venta.id;
+    
+    let itemsHTML = '';
+    items.forEach(item => {
+      itemsHTML += `
+        <tr>
+          <td>${item.nombre}</td>
+          <td>${item.cantidad}</td>
+          <td>$${item.precioUnitario.toFixed(2)}</td>
+          <td>$${item.subtotal}</td>
+        </tr>
+      `;
+    });
+    
+    return `
+      <div class="receipt">
+        <div class="receipt-header">
+          <h2>Comprobante de Venta</h2>
+          <p><strong>Fecha:</strong> ${fecha}</p>
+          <p><strong>Venta #:</strong> ${ventaId}</p>
+          <p><strong>Cliente:</strong> ${cliente.nombre}</p>
+        </div>
+        <div class="receipt-body">
+          <table class="table w-full">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio Unit.</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHTML}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" class="text-right"><strong>Total:</strong></td>
+                <td><strong>$${venta.total}</strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="receipt-footer">
+          <p>Tipo de pago: ${venta.fiado ? 'Fiado' : 'Contado'}</p>
+          ${venta.notas ? `<p><strong>Notas:</strong> ${venta.notas}</p>` : ''}
+          <p class="text-center mt-4">¡Gracias por su compra!</p>
+        </div>
+      </div>
+    `;
+  },
+  
+  // Show receipt modal
+  showReceiptModal: function(venta, cliente, items) {
+    const receiptHTML = this.generateReceiptHTML(venta, cliente, items);
+    document.getElementById('receipt-container').innerHTML = receiptHTML;
+    modalManager.openModal('receipt-modal');
   }
 };
 
@@ -1472,32 +1448,47 @@ const stockManager = {
 };
 
 const ventasManager = {
-  registrarVenta: async function(clienteId, productoId, cantidad, esFiado, notas) {
+  registrarVenta: async function(clienteId, esFiado, notas) {
     try {
       loadingManager.show();
       
-      // Get product to calculate total and check stock
-      const { data: producto, error: productoError } = await supabase
-        .from('productos')
-        .select('*')
-        .eq('id', parseInt(productoId))
-        .single();
-      
-      if (productoError) throw productoError;
-      
-      if (producto.stock < parseInt(cantidad)) {
-        return { success: false, error: 'Stock insuficiente' };
+      if (store.currentCart.length === 0) {
+        return { success: false, error: 'El carrito está vacío' };
       }
       
+      const total = store.getCartTotal();
+      const multipleProducts = store.currentCart.length > 1;
+      
+      // Check stock for all products
+      for (const item of store.currentCart) {
+        const { data: producto, error: productoError } = await supabase
+          .from('productos')
+          .select('*')
+          .eq('id', item.productoId)
+          .single();
+        
+        if (productoError) throw productoError;
+        
+        if (producto.stock < item.cantidad) {
+          return { 
+            success: false, 
+            error: `Stock insuficiente para ${producto.nombre}. Disponible: ${producto.stock}`
+          };
+        }
+      }
+      
+      // Prepare sale record
       const newVenta = {
-        cliente_id: parseInt(clienteId), // Changed from clienteId to cliente_id
-        producto_id: parseInt(productoId), // Changed from productoId to producto_id
-        cantidad: parseInt(cantidad),
-        total: (parseInt(cantidad) * parseFloat(producto.precio)).toFixed(2),
+        cliente_id: parseInt(clienteId),
+        producto_id: multipleProducts ? null : store.currentCart[0].productoId,
+        cantidad: multipleProducts ? null : store.currentCart[0].cantidad,
+        total: total,
         fecha: new Date().toISOString(),
         fiado: esFiado,
         pagado: !esFiado,
-        notas: notas || ''
+        notas: notas || '',
+        multipleProducts: multipleProducts,
+        items_json: JSON.stringify(store.currentCart)
       };
       
       // Insert sale into Supabase
@@ -1509,14 +1500,17 @@ const ventasManager = {
       
       if (ventaError) throw ventaError;
       
-      // Register stock movement
-      await stockManager.registrarMovimiento(productoId, 'salida', cantidad);
+      // Register stock movements for each product
+      for (const item of store.currentCart) {
+        await stockManager.registrarMovimiento(item.productoId, 'salida', item.cantidad);
+      }
       
       // Map the response back to our expected format for local store
       const mappedVenta = {
         ...venta,
-        clienteId: venta.cliente_id, // Map back for local store consistency
-        productoId: venta.producto_id // Map back for local store consistency
+        clienteId: venta.cliente_id,
+        productoId: venta.producto_id,
+        items: JSON.parse(venta.items_json || '[]')
       };
       
       // Update in local store (should be updated by subscription, but just in case)
@@ -1525,7 +1519,15 @@ const ventasManager = {
       ui.displayVentas();
       ui.displayFiados();
       
-      return { success: true, venta: mappedVenta };
+      // Get client for receipt
+      const cliente = store.clientes.find(c => c.id === parseInt(clienteId));
+      
+      return { 
+        success: true, 
+        venta: mappedVenta,
+        cliente: cliente,
+        items: store.currentCart.slice()  // Copy the cart items for receipt
+      };
     } catch (error) {
       console.error('Error registering sale:', error);
       alert('Error al registrar la venta: ' + error.message);
@@ -1535,7 +1537,79 @@ const ventasManager = {
     }
   },
   
-  editarVenta: async function(id, clienteId, productoId, cantidad, esFiado, notas) {
+  getVentaReceipt: async function(ventaId) {
+    try {
+      loadingManager.show();
+      
+      // Get sale details
+      const { data: venta, error: ventaError } = await supabase
+        .from('ventas')
+        .select('*')
+        .eq('id', parseInt(ventaId))
+        .single();
+      
+      if (ventaError) throw ventaError;
+      
+      // Get client
+      const { data: cliente, error: clienteError } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('id', venta.cliente_id)
+        .single();
+      
+      if (clienteError) throw clienteError;
+      
+      // Parse items
+      let items = [];
+      if (venta.items_json) {
+        try {
+          items = JSON.parse(venta.items_json);
+        } catch (e) {
+          console.error('Error parsing items JSON:', e);
+        }
+      } else if (venta.producto_id) {
+        // Legacy sale with single product
+        const { data: producto } = await supabase
+          .from('productos')
+          .select('*')
+          .eq('id', venta.producto_id)
+          .single();
+        
+        if (producto) {
+          items = [{
+            productoId: producto.id,
+            nombre: producto.nombre,
+            cantidad: venta.cantidad,
+            precioUnitario: parseFloat(venta.total) / venta.cantidad,
+            subtotal: venta.total
+          }];
+        }
+      }
+      
+      // Map the response back to our expected format
+      const mappedVenta = {
+        ...venta,
+        clienteId: venta.cliente_id,
+        productoId: venta.producto_id,
+        items: items
+      };
+      
+      return { 
+        success: true, 
+        venta: mappedVenta,
+        cliente: cliente,
+        items: items
+      };
+    } catch (error) {
+      console.error('Error getting sale receipt:', error);
+      alert('Error al obtener el comprobante: ' + error.message);
+      return { success: false, error: error.message };
+    } finally {
+      loadingManager.hide();
+    }
+  },
+  
+  editarVenta: async function(id, clienteId, esFiado, notas) {
     try {
       loadingManager.show();
       
@@ -1548,76 +1622,29 @@ const ventasManager = {
       
       if (ventaError) throw ventaError;
       
-      // Get product
-      const { data: producto, error: productoError } = await supabase
-        .from('productos')
-        .select('*')
-        .eq('id', parseInt(productoId))
-        .single();
-      
-      if (productoError) throw productoError;
-      
-      // If the product is different or quantity increased, check stock
-      if (venta.producto_id !== parseInt(productoId) || parseInt(cantidad) > venta.cantidad) {
-        const cantidadAdicional = venta.producto_id !== parseInt(productoId) ? 
-                                parseInt(cantidad) : 
-                                parseInt(cantidad) - venta.cantidad;
-        
-        if (producto.stock < cantidadAdicional) {
-          return { success: false, error: 'Stock insuficiente para la modificación' };
-        }
-        
-        // If product changed, return the old product's stock
-        if (venta.producto_id !== parseInt(productoId)) {
-          // Get old product
-          const { data: oldProducto, error: oldProductoError } = await supabase
-            .from('productos')
-            .select('*')
-            .eq('id', venta.producto_id)
-            .single();
-          
-          if (!oldProductoError && oldProducto) {
-            // Return product to stock
-            await stockManager.registrarMovimiento(venta.producto_id, 'entrada', venta.cantidad);
-          }
-          
-          // Take new product from stock
-          await stockManager.registrarMovimiento(productoId, 'salida', cantidad);
-        } else if (parseInt(cantidad) > venta.cantidad) {
-          // Just take more of the same product from stock
-          await stockManager.registrarMovimiento(productoId, 'salida', parseInt(cantidad) - venta.cantidad);
-        } else if (parseInt(cantidad) < venta.cantidad) {
-          // Return some product to stock
-          await stockManager.registrarMovimiento(productoId, 'entrada', venta.cantidad - parseInt(cantidad));
-        }
-      }
-      
-      // Update sale data
+      // Prepare sale update
       const updateData = {
-        cliente_id: parseInt(clienteId), // Changed from clienteId to cliente_id
-        producto_id: parseInt(productoId), // Changed from productoId to producto_id
-        cantidad: parseInt(cantidad),
-        total: (parseInt(cantidad) * parseFloat(producto.precio)).toFixed(2),
+        cliente_id: parseInt(clienteId),
         fiado: esFiado,
-        notas: notas || '',
-        pagado: venta.pagado || !esFiado // If was paid or now it's not fiado, mark as paid
+        pagado: !esFiado,
+        notas: notas || ''
       };
       
       // Update sale in Supabase
-      const { data: updatedVenta, error: updateError } = await supabase
+      const { data, error } = await supabase
         .from('ventas')
         .update(updateData)
         .eq('id', id)
         .select()
         .single();
       
-      if (updateError) throw updateError;
+      if (error) throw error;
       
       // Map the response back to our expected format for local store
       const mappedVenta = {
-        ...updatedVenta,
-        clienteId: updatedVenta.cliente_id, // Map back for local store consistency
-        productoId: updatedVenta.producto_id // Map back for local store consistency
+        ...data,
+        clienteId: data.cliente_id,
+        productoId: data.producto_id
       };
       
       // Update in local store (should be updated by subscription, but just in case)
@@ -1653,7 +1680,16 @@ const ventasManager = {
       if (ventaError) throw ventaError;
       
       // Return product to stock
-      await stockManager.registrarMovimiento(venta.producto_id, 'entrada', venta.cantidad);
+      if (venta.producto_id) {
+        await stockManager.registrarMovimiento(venta.producto_id, 'entrada', venta.cantidad);
+      } else {
+        // For multiple products sales, return stock for each item
+        if (venta.items_json) {
+          JSON.parse(venta.items_json).forEach(item => {
+            stockManager.registrarMovimiento(item.productoId, 'entrada', item.cantidad);
+          });
+        }
+      }
       
       // Delete sale from Supabase
       const { error: deleteError } = await supabase
@@ -2122,197 +2158,119 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Sales events
   document.getElementById('agregar-venta-btn').addEventListener('click', async function() {
-    const clienteId = ui.clienteAutocomplete.getValue();
-    const productoId = ui.productoAutocomplete.getValue();
-    const cantidad = document.getElementById('venta-cantidad').value;
+    const clienteId = ui.selectedClienteId;
     const esFiado = document.getElementById('venta-fiado').checked;
     const notas = document.getElementById('venta-notas').value;
     
-    if (clienteId && productoId && cantidad && parseInt(cantidad) > 0) {
-      const result = await ventasManager.registrarVenta(clienteId, productoId, cantidad, esFiado, notas);
+    if (clienteId) {
+      const result = await ventasManager.registrarVenta(clienteId, esFiado, notas);
       
       if (result.success) {
+        // Show receipt
+        ui.showReceiptModal(result.venta, result.cliente, result.items);
+        
         // Clear form and close modal
-        ui.clienteAutocomplete.clear();
-        ui.productoAutocomplete.clear();
+        document.getElementById('venta-cliente-input').value = '';
+        document.getElementById('venta-producto-input').value = '';
         document.getElementById('venta-cantidad').value = '';
         document.getElementById('venta-fiado').checked = false;
         document.getElementById('venta-notas').value = '';
         document.getElementById('venta-producto-stock-container').classList.add('hidden');
+        document.getElementById('add-to-cart-btn').disabled = true;
+        ui.selectedClienteId = null;
+        ui.selectedProductoId = null;
         ui.updateFiadoStatus(false);
-        modalManager.closeAllModals();
-        
-        // No need to call displayVentas - the subscription will handle it
+        store.clearCart();
+        ui.displayCart();
+        modalManager.closeModal('add-venta-modal');
       } else {
         alert(result.error);
       }
     } else {
-      alert('Todos los campos son requeridos');
+      alert('Por favor seleccione un cliente');
     }
   });
   
-  // Edit Sale events
-  document.getElementById('update-venta-btn').addEventListener('click', async function() {
-    const id = parseInt(document.getElementById('edit-venta-id').value);
-    const clienteId = ui.editClienteAutocomplete.getValue();
-    const productoId = ui.editProductoAutocomplete.getValue();
-    const cantidad = document.getElementById('edit-venta-cantidad').value;
-    const esFiado = document.getElementById('edit-venta-fiado').checked;
-    const notas = document.getElementById('edit-venta-notas').value;
+  // Add to cart button
+  document.getElementById('add-to-cart-btn').addEventListener('click', function() {
+    const productoId = ui.selectedProductoId;
+    const cantidad = document.getElementById('venta-cantidad').value;
     
-    if (id && clienteId && productoId && cantidad && parseInt(cantidad) > 0) {
-      const result = await ventasManager.editarVenta(id, clienteId, productoId, cantidad, esFiado, notas);
-      
-      if (result.success) {
-        modalManager.closeAllModals();
-      } else {
-        alert(result.error);
+    if (productoId && cantidad && parseInt(cantidad) > 0) {
+      const producto = store.productos.find(p => p.id === parseInt(productoId));
+      if (producto) {
+        // Check if there's enough stock
+        if (parseInt(cantidad) <= producto.stock) {
+          store.addToCart(producto, cantidad);
+          ui.displayCart();
+          
+          // Clear product selection
+          ui.selectedProductoId = null;
+          document.getElementById('venta-producto-input').value = '';
+          document.getElementById('venta-cantidad').value = '';
+          document.getElementById('venta-producto-stock-container').classList.add('hidden');
+          document.getElementById('add-to-cart-btn').disabled = true;
+        } else {
+          alert(`Stock insuficiente. Disponible: ${producto.stock}`);
+        }
       }
     } else {
-      alert('Todos los campos son requeridos');
+      alert('Seleccione un producto y especifique una cantidad válida');
     }
   });
   
-  // Delete Sale events
-  document.getElementById('confirm-delete-venta-btn').addEventListener('click', async function() {
-    const id = parseInt(document.getElementById('delete-venta-id').value);
-    
-    if (id) {
-      const success = await ventasManager.eliminarVenta(id);
-      if (success) {
-        modalManager.closeAllModals();
-      }
-    }
-  });
-  
-  // Fiado events
-  document.getElementById('fiado-cliente-select').addEventListener('change', function() {
-    ui.updateFiadoDetails(this.value);
-  });
-  
-  document.getElementById('pagar-fiado-btn').addEventListener('click', async function() {
-    const clienteId = document.getElementById('fiado-cliente-select').value;
-    const monto = document.getElementById('fiado-monto-pago').value;
-    
-    if (clienteId && monto && parseFloat(monto) > 0) {
-      const result = await ventasManager.pagarFiado(clienteId, monto);
-      
-      if (result.success) {
-        // Update fiado details
-        ui.updateFiadoDetails(clienteId);
-        document.getElementById('fiado-monto-pago').value = '';
-        modalManager.closeAllModals();
-      }
-    } else {
-      alert('Seleccione un cliente y especifique un monto válido');
-    }
-  });
-  
-  document.getElementById('confirm-mark-paid-btn').addEventListener('click', async function() {
-    const fiadoId = document.getElementById('fiado-id-to-mark').value;
-    
-    if (fiadoId) {
-      const success = await ventasManager.marcarFiadoPagado(parseInt(fiadoId));
-      if (success) {
-        modalManager.closeAllModals();
-      }
-    }
-  });
-  
-  // Analysis events
-  document.getElementById('analisis-cliente-select').addEventListener('change', function() {
-    ui.displayClientAnalysis(this.value);
-  });
-  
-  // Notas events
-  document.getElementById('crear-nota-btn').addEventListener('click', async function() {
-    const titulo = document.getElementById('nota-titulo').value;
-    const contenido = document.getElementById('nota-contenido').value;
-    
-    if (titulo && contenido) {
-      const result = await notasManager.crearNota(titulo, contenido);
-      
-      if (result) {
-        // Clear form and close modal
-        document.getElementById('nota-titulo').value = '';
-        document.getElementById('nota-contenido').value = '';
-        modalManager.closeAllModals();
-        
-        // No need to call displayNotas - the subscription will handle it
-      }
-    } else {
-      alert('El título y el contenido son requeridos');
-    }
-  });
-  
-  document.getElementById('update-nota-btn').addEventListener('click', async function() {
-    const id = parseInt(document.getElementById('edit-nota-id').value);
-    const titulo = document.getElementById('edit-nota-titulo').value;
-    const contenido = document.getElementById('edit-nota-contenido').value;
-    
-    if (id && titulo && contenido) {
-      const success = await notasManager.editarNota(id, titulo, contenido);
-      if (success) {
-        modalManager.closeAllModals();
-      }
-    } else {
-      alert('El título y el contenido son requeridos');
-    }
-  });
-  
-  document.getElementById('confirm-delete-nota-btn').addEventListener('click', async function() {
-    const id = parseInt(document.getElementById('delete-nota-id').value);
-    
-    if (id) {
-      const success = await notasManager.eliminarNota(id);
-      if (success) {
-        modalManager.closeAllModals();
+  // Remove item from cart
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.remove-cart-item')) {
+      const index = e.target.closest('.remove-cart-item').getAttribute('data-index');
+      if (index !== null) {
+        store.currentCart.splice(parseInt(index), 1);
+        ui.displayCart();
       }
     }
   });
   
   // Event delegation for dynamic elements
   document.addEventListener('click', function(e) {
-    // Edit product button
-    if (e.target.closest('.edit-producto')) {
-      const productId = parseInt(e.target.closest('.edit-producto').getAttribute('data-id'));
-      const producto = store.productos.find(p => p.id === productId);
+    // Client selection 
+    if (e.target.closest('.select-cliente')) {
+      const button = e.target.closest('.select-cliente');
+      const clienteId = button.getAttribute('data-id');
+      const clienteName = button.getAttribute('data-name');
+      const isEdit = button.getAttribute('data-edit') === 'true';
       
-      if (producto) {
-        document.getElementById('edit-producto-id').value = producto.id;
-        document.getElementById('edit-producto-nombre').value = producto.nombre;
-        document.getElementById('edit-producto-precio').value = producto.precio;
-        
-        modalManager.openModal('edit-producto-modal');
+      if (isEdit) {
+        ui.updateEditVentaClienteSelection(clienteId, clienteName);
+      } else {
+        ui.updateVentaClienteSelection(clienteId, clienteName);
       }
     }
     
-    // Delete product button
-    if (e.target.closest('.delete-producto')) {
-      const productId = parseInt(e.target.closest('.delete-producto').getAttribute('data-id'));
-      document.getElementById('delete-producto-id').value = productId;
-      modalManager.openModal('delete-producto-modal');
-    }
-    
-    // Edit client button
-    if (e.target.closest('.edit-cliente')) {
-      const clientId = parseInt(e.target.closest('.edit-cliente').getAttribute('data-id'));
-      const cliente = store.clientes.find(c => c.id === clientId);
+    // Product selection
+    if (e.target.closest('.select-producto')) {
+      const button = e.target.closest('.select-producto');
+      const productoId = button.getAttribute('data-id');
+      const productoName = button.getAttribute('data-name');
+      const stock = button.getAttribute('data-stock');
+      const isEdit = button.getAttribute('data-edit') === 'true';
       
-      if (cliente) {
-        document.getElementById('edit-cliente-id').value = cliente.id;
-        document.getElementById('edit-cliente-nombre').value = cliente.nombre;
-        document.getElementById('edit-cliente-detalles').value = cliente.detalles || '';
-        
-        modalManager.openModal('edit-cliente-modal');
+      if (isEdit) {
+        ui.updateEditVentaProductoSelection(productoId, productoName, stock);
+      } else {
+        ui.updateVentaProductoSelection(productoId, productoName, stock);
       }
     }
     
-    // Delete client button
-    if (e.target.closest('.delete-cliente')) {
-      const clientId = parseInt(e.target.closest('.delete-cliente').getAttribute('data-id'));
-      document.getElementById('delete-cliente-id').value = clientId;
-      modalManager.openModal('delete-cliente-modal');
+    // View receipt button
+    if (e.target.closest('.view-receipt')) {
+      const ventaId = e.target.closest('.view-receipt').getAttribute('data-id');
+      if (ventaId) {
+        ventasManager.getVentaReceipt(ventaId).then(result => {
+          if (result.success) {
+            ui.showReceiptModal(result.venta, result.cliente, result.items);
+          }
+        });
+      }
     }
     
     // Edit sale button
@@ -2323,21 +2281,14 @@ document.addEventListener('DOMContentLoaded', function() {
       if (venta) {
         document.getElementById('edit-venta-id').value = venta.id;
         
-        // Set selected values in autocompletes
+        // Set selected values
         const cliente = store.clientes.find(c => c.id === venta.clienteId);
-        const producto = store.productos.find(p => p.id === venta.productoId);
         
-        if (cliente && ui.editClienteAutocomplete) {
-          ui.editClienteAutocomplete.setValue(cliente.id.toString(), cliente.nombre);
+        if (cliente) {
+          ui.selectedEditClienteId = cliente.id;
+          document.getElementById('edit-venta-cliente-input').value = cliente.nombre;
         }
         
-        if (producto && ui.editProductoAutocomplete) {
-          ui.editProductoAutocomplete.setValue(producto.id.toString(), producto.nombre);
-          document.getElementById('edit-venta-producto-stock').textContent = producto.stock;
-          document.getElementById('edit-venta-producto-stock-container').classList.remove('hidden');
-        }
-        
-        document.getElementById('edit-venta-cantidad').value = venta.cantidad;
         document.getElementById('edit-venta-fiado').checked = venta.fiado;
         document.getElementById('edit-venta-notas').value = venta.notas || '';
         
@@ -2352,13 +2303,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const ventaId = parseInt(e.target.closest('.delete-venta').getAttribute('data-id'));
       document.getElementById('delete-venta-id').value = ventaId;
       modalManager.openModal('delete-venta-modal');
-    }
-    
-    // Mark fiado as paid button
-    if (e.target.closest('.mark-fiado-paid')) {
-      const fiadoId = parseInt(e.target.closest('.mark-fiado-paid').getAttribute('data-id'));
-      document.getElementById('fiado-id-to-mark').value = fiadoId;
-      modalManager.openModal('mark-fiado-paid-modal');
     }
     
     // Edit note button
@@ -2381,6 +2325,36 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('delete-nota-id').value = notaId;
       modalManager.openModal('delete-nota-modal');
     }
+  });
+  
+  // Note events
+  document.getElementById('crear-nota-btn').addEventListener('click', async function() {
+    const titulo = document.getElementById('nota-titulo').value;
+    const contenido = document.getElementById('nota-contenido').value;
+    
+    if (titulo && contenido) {
+      const result = await notasManager.crearNota(titulo, contenido);
+      
+      if (result) {
+        // Clear form and close modal
+        document.getElementById('nota-titulo').value = '';
+        document.getElementById('nota-contenido').value = '';
+        modalManager.closeAllModals();
+        
+        // No need to call displayNotas - the subscription will handle it
+      }
+    } else {
+      alert('Por favor ingresa título y contenido para la nota');
+    }
+  });
+  
+  // Fix for empty state note creation
+  document.addEventListener('click', function(e) {
+    if (e.target.id === 'empty-state-create-note-btn') {
+      modalManager.openModal('add-nota-modal');
+    }
+    
+    // ... existing event handlers ...
   });
   
   // Initialize UI with default section

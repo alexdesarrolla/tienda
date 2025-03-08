@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="customTheme">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo de Productos</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@3.5.0/dist/full.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    /* Additional catalog-specific styles */
+    .catalog-grid {
+      display: grid;
+      grid-template-columns: repeat(1, 1fr);
+      gap: 1.5rem;
+      width: 100%;
+    }
+    
+    @media (min-width: 640px) {
+      .catalog-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (min-width: 1024px) {
+      .catalog-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    
+    @media (min-width: 1280px) {
+      .catalog-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    
+    .product-card {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border-radius: 12px !important;
+      overflow: hidden;
+      position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      border: none !important;
+    }
+    
+    .product-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .product-image-container {
+      height: 180px;
+      overflow: hidden;
+      background-color: #f8f9fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .product-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transition: transform 0.3s ease;
+    }
+    
+    .product-card:hover .product-image {
+      transform: scale(1.05);
+    }
+    
+    .product-price {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--oxford-blue);
+      margin: 0.5rem 0;
+    }
+    
+    .product-description {
+      color: #666;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 1rem;
+      flex-grow: 1;
+    }
+    
+    .stock-indicator {
+      display: flex;
+      align-items: center;
+      margin-top: 0.5rem;
+    }
+    
+    .stock-bar {
+      height: 6px;
+      flex-grow: 1;
+      background-color: #e0e0e0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-left: 0.5rem;
+    }
+    
+    .stock-level {
+      height: 100%;
+      background-color: var(--orange-web);
+      border-radius: 3px;
+    }
+    
+    .category-badge {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      z-index: 10;
+    }
+    
+    .catalog-empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      background-color: rgba(252, 163, 17, 0.05);
+      border-radius: 12px;
+      border: 1px dashed var(--orange-web);
+      width: 100%;
+      margin: 2rem auto;
+      max-width: 600px;
+    }
+    
+    .catalog-empty-state i {
+      font-size: 3.5rem;
+      color: var(--orange-web);
+      margin-bottom: 1.25rem;
+      opacity: 0.7;
+    }
+    
+    .catalog-empty-state h3 {
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--oxford-blue);
+      font-size: 1.5rem;
+    }
+    
+    .catalog-empty-state p {
+      color: #666;
+      margin-bottom: 1.5rem;
+    }
+    
+    .catalog-header {
+      position: relative;
+      background-color: var(--oxford-blue);
+      color: white;
+      padding: 3rem 1.5rem;
+      margin-bottom: 2rem;
+      border-radius: 0 0 20px 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .catalog-header::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      border-radius: 0 0 20px 20px;
+      z-index: 0;
+    }
+    
+    .catalog-header-content {
+      position: relative;
+      z-index: 1;
+    }
+    
+    .filter-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .filter-btn {
+      background-color: white;
+      color: var(--oxford-blue);
+      border: 1px solid #e0e0e0;
+      border-radius: 20px;
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    
+    .filter-btn:hover, .filter-btn.active {
+      background-color: var(--orange-web);
+      color: white;
+      border-color: var(--orange-web);
+    }
+    
+    .sort-dropdown {
+      position: relative;
+      margin-left: auto;
+    }
+    
+    .sort-dropdown select {
+      appearance: none;
+      background-color: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 20px;
+      padding: 0.5rem 2.5rem 0.5rem 1rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2314213d' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: calc(100% - 0.75rem) center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading indicator -->
+  <div id="loading-indicator" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+    <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-orange-web"></div>
+  </div>
+
+  <!-- Navbar -->
+  <div class="navbar bg-primary text-primary-content sticky top-0 z-40 shadow-md">
+    <div class="flex-1">
+      <a href="index.html" class="navbar-title font-bold text-xl flex items-center">
+        <i class="fas fa-store mr-2"></i>
+        Gestión de Tienda
+      </a>
+    </div>
+    <div class="flex-none">
+      <a href="index.html" class="btn btn-ghost">
+        <i class="fas fa-arrow-left mr-2"></i>
+        <span class="hidden sm:inline">Volver al Panel</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Catalog Header -->
+  <div class="catalog-header">
+    <div class="container mx-auto catalog-header-content">
+      <h1 class="text-3xl md:text-4xl font-bold mb-4">Catálogo de Productos</h1>
+      <p class="text-white text-opacity-80 max-w-2xl mb-6">
+        Explora nuestra selección de productos disponibles. Utiliza los filtros y la búsqueda para encontrar exactamente lo que necesitas.
+      </p>
+      
+      <div class="flex flex-col md:flex-row gap-4">
+        <div class="search-box w-full md:w-96 bg-white bg-opacity-10 rounded-lg overflow-hidden">
+          <div class="relative">
+            <i class="fas fa-search search-icon text-white"></i>
+            <input id="search-catalog" type="text" placeholder="Buscar productos..." 
+                  class="input w-full pl-10 bg-transparent border-none text-white placeholder-white placeholder-opacity-75" />
+          </div>
+        </div>
+        
+        <div class="sort-dropdown">
+          <select id="sort-products" class="select select-bordered">
+            <option value="name-asc">Nombre (A-Z)</option>
+            <option value="name-desc">Nombre (Z-A)</option>
+            <option value="price-asc">Precio (Menor a Mayor)</option>
+            <option value="price-desc">Precio (Mayor a Menor)</option>
+            <option value="stock-asc">Stock (Menor a Mayor)</option>
+            <option value="stock-desc">Stock (Mayor a Menor)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container mx-auto px-4 pb-12">
+    <!-- Filter options -->
+    <div class="filter-container">
+      <button class="filter-btn active" data-filter="all">Todos</button>
+      <button class="filter-btn" data-filter="in-stock">En Stock</button>
+      <button class="filter-btn" data-filter="out-of-stock">Agotados</button>
+    </div>
+    
+    <!-- Stats summary -->
+    <div class="stats shadow mb-6 w-full">
+      <div class="stat">
+        <div class="stat-title">Total Productos</div>
+        <div class="stat-value" id="total-products">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-title">En Stock</div>
+        <div class="stat-value text-success" id="in-stock-products">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-title">Agotados</div>
+        <div class="stat-value text-error" id="out-of-stock-products">0</div>
+      </div>
+    </div>
+    
+    <!-- Products container -->
+    <div id="catalog-container">
+      <!-- Products will be loaded dynamically -->
+    </div>
+  </div>
+
+  <script>
+    // Initialize Supabase Client
+    const supabaseUrl = 'https://utpiwcqedxgvtiemkwtx.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0cGl3Y3FlZHhndnRpZW1rd3R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA1NDA3MDMsImV4cCI6MjA1NjExNjcwM30.S2mvJCYV0hU8juVh4g-sl-IYPQQ1T3s6DJ6AjyauD0E';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    
+    // Store products globally for filtering and sorting
+    let allProducts = [];
+    let currentFilter = 'all';
+    
+    // Loading indicator
+    const loadingManager = {
+      show: function() {
+        document.getElementById('loading-indicator').style.display = 'flex';
+      },
+      hide: function() {
+        document.getElementById('loading-indicator').style.display = 'none';
+      }
+    };
+
+    // Load products and display catalog
+    async function loadProducts() {
+      try {
+        loadingManager.show();
+        
+        const { data: productos, error } = await supabase
+          .from('productos')
+          .select('*')
+          .order('nombre');
+        
+        if (error) throw error;
+        
+        allProducts = productos;
+        updateStats(productos);
+        displayCatalog(productos);
+      } catch (error) {
+        console.error('Error loading products:', error);
+        alert('Error al cargar productos: ' + error.message);
+      } finally {
+        loadingManager.hide();
+      }
+    }
+
+    // Update stats
+    function updateStats(productos) {
+      const totalProducts = productos.length;
+      const inStockProducts = productos.filter(p => p.stock > 0).length;
+      const outOfStockProducts = totalProducts - inStockProducts;
+      
+      document.getElementById('total-products').textContent = totalProducts;
+      document.getElementById('in-stock-products').textContent = inStockProducts;
+      document.getElementById('out-of-stock-products').textContent = outOfStockProducts;
+    }
+
+    // Display catalog
+    function displayCatalog(productos) {
+      const catalogContainer = document.getElementById('catalog-container');
+      if (!catalogContainer) return;
+      
+      catalogContainer.innerHTML = '';
+      
+      // If no products
+      if (productos.length === 0) {
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'catalog-empty-state';
+        emptyMessage.innerHTML = `
+          <i class="fas fa-box-open"></i>
+          <h3>No hay productos disponibles</h3>
+          <p>Aún no hay productos en el catálogo o ninguno coincide con tu búsqueda.</p>
+        `;
+        catalogContainer.appendChild(emptyMessage);
+        return;
+      }
+      
+      // Create grid layout for products
+      const productsGrid = document.createElement('div');
+      productsGrid.className = 'catalog-grid';
+      
+      productos.forEach(producto => {
+        const productCard = document.createElement('div');
+        productCard.className = 'card product-card bg-base-100 shadow-xl';
+        productCard.setAttribute('data-stock', producto.stock > 0 ? 'in-stock' : 'out-of-stock');
+        
+        // Check if the product is available
+        const isAvailable = producto.stock > 0;
+        
+        // Calculate stock percentage for visual indicator (max at 100%)
+        const stockPercentage = Math.min((producto.stock / 20) * 100, 100);
+        
+        // Generate a placeholder image based on product name
+        const productInitial = producto.nombre.charAt(0).toUpperCase();
+        const bgColor = stringToColor(producto.nombre);
+        
+        productCard.innerHTML = `
+          <div class="category-badge badge ${isAvailable ? 'badge-success' : 'badge-error'}">
+            ${isAvailable ? 'En stock' : 'Agotado'}
+          </div>
+          <div class="product-image-container">
+            <div style="width: 100px; height: 100px; background-color: ${bgColor}; color: white; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: bold; border-radius: 10px;">
+              ${productInitial}
+            </div>
+          </div>
+          <div class="card-body">
+            <h2 class="card-title">${producto.nombre}</h2>
+            <p class="product-price">$${parseFloat(producto.precio).toFixed(2)}</p>
+            <p class="product-description">
+              Producto de alta calidad disponible en nuestra tienda.
+            </p>
+            <div class="stock-indicator">
+              <span class="text-sm font-medium">Stock:</span>
+              <div class="stock-bar">
+                <div class="stock-level" style="width: ${stockPercentage}%"></div>
+              </div>
+            </div>
+            <div class="card-actions justify-between items-center mt-4">
+              <div class="text-sm font-semibold">
+                ${producto.stock} unidades disponibles
+              </div>
+              <button class="btn btn-sm btn-primary" ${!isAvailable ? 'disabled' : ''}>
+                <i class="fas fa-shopping-cart mr-1"></i> Ver detalles
+              </button>
+            </div>
+          </div>
+        `;
+        
+        productsGrid.appendChild(productCard);
+      });
+      
+      catalogContainer.appendChild(productsGrid);
+    }
+
+    // Filter catalog by search term
+    function filterBySearch(searchTerm) {
+      searchTerm = searchTerm.toLowerCase().trim();
+      
+      let filteredProducts;
+      
+      if (searchTerm === '') {
+        filteredProducts = [...allProducts];
+      } else {
+        filteredProducts = allProducts.filter(product => 
+          product.nombre.toLowerCase().includes(searchTerm)
+        );
+      }
+      
+      // Apply current category filter
+      if (currentFilter !== 'all') {
+        if (currentFilter === 'in-stock') {
+          filteredProducts = filteredProducts.filter(product => product.stock > 0);
+        } else if (currentFilter === 'out-of-stock') {
+          filteredProducts = filteredProducts.filter(product => product.stock <= 0);
+        }
+      }
+      
+      // Apply current sort
+      applySorting(filteredProducts);
+    }
+
+    // Filter catalog by category
+    function filterByCategory(category) {
+      currentFilter = category;
+      
+      let filteredProducts;
+      
+      if (category === 'all') {
+        filteredProducts = [...allProducts];
+      } else if (category === 'in-stock') {
+        filteredProducts = allProducts.filter(product => product.stock > 0);
+      } else if (category === 'out-of-stock') {
+        filteredProducts = allProducts.filter(product => product.stock <= 0);
+      }
+      
+      // Apply current search term
+      const searchTerm = document.getElementById('search-catalog').value.toLowerCase().trim();
+      if (searchTerm !== '') {
+        filteredProducts = filteredProducts.filter(product => 
+          product.nombre.toLowerCase().includes(searchTerm)
+        );
+      }
+      
+      // Apply current sort
+      applySorting(filteredProducts);
+    }
+
+    // Sort products
+    function applySorting(products) {
+      const sortValue = document.getElementById('sort-products').value;
+      
+      let sortedProducts = [...products];
+      
+      switch (sortValue) {
+        case 'name-asc':
+          sortedProducts.sort((a, b) => a.nombre.localeCompare(b.nombre));
+          break;
+        case 'name-desc':
+          sortedProducts.sort((a, b) => b.nombre.localeCompare(a.nombre));
+          break;
+        case 'price-asc':
+          sortedProducts.sort((a, b) => parseFloat(a.precio) - parseFloat(b.precio));
+          break;
+        case 'price-desc':
+          sortedProducts.sort((a, b) => parseFloat(b.precio) - parseFloat(a.precio));
+          break;
+        case 'stock-asc':
+          sortedProducts.sort((a, b) => a.stock - b.stock);
+          break;
+        case 'stock-desc':
+          sortedProducts.sort((a, b) => b.stock - a.stock);
+          break;
+      }
+      
+      displayCatalog(sortedProducts);
+    }
+
+    // Generate a color from a string
+    function stringToColor(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      
+      const hue = Math.abs(hash % 360);
+      return `hsl(${hue}, 70%, 40%)`;
+    }
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      // Load products
+      loadProducts();
+      
+      // Search functionality
+      document.getElementById('search-catalog').addEventListener('input', function() {
+        filterBySearch(this.value);
+      });
+      
+      // Filter buttons
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          // Update active state
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          
+          // Apply filter
+          const filter = this.getAttribute('data-filter');
+          filterByCategory(filter);
+        });
+      });
+      
+      // Sort dropdown
+      document.getElementById('sort-products').addEventListener('change', function() {
+        // Re-apply current filters with new sort
+        filterByCategory(currentFilter);
+      });
+    });
+  </script>
+</body>
+</html>
