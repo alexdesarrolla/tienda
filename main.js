@@ -43,10 +43,10 @@ const store = {
     if (sessionData) {
       try {
         const session = JSON.parse(sessionData);
-        // Check if session is not too old (e.g., 7 days)
+        // Check if session is not too old (e.g., 1 hour)
         const now = new Date().getTime();
         const sessionAge = now - session.timestamp;
-        const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+        const maxAge = 1 * 60 * 60 * 1000; // 1 hour in milliseconds
         
         if (sessionAge < maxAge) {
           this.currentUser = session.currentUser;
@@ -382,6 +382,7 @@ const modalManager = {
     const modal = document.getElementById(modalId);
     if (modal) {
       modal.classList.add('active');
+      
       // Add event listener to close modal when clicking outside the modal box
       const handleOutsideClick = (e) => {
         if (e.target === modal) {
@@ -389,6 +390,9 @@ const modalManager = {
           modal.removeEventListener('click', handleOutsideClick);
         }
       };
+      
+      // Remove any existing listeners first to prevent duplicates
+      modal.removeEventListener('click', handleOutsideClick);
       modal.addEventListener('click', handleOutsideClick);
     } else {
       console.error(`Modal with ID ${modalId} not found`);
@@ -426,6 +430,25 @@ const ui = {
     
     // Close drawer if open on mobile
     document.getElementById('drawer-toggle').checked = false;
+  },
+  
+  showTab: function(tabId) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+      tab.classList.add('hidden');
+    });
+    
+    // Show selected tab content
+    document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+    
+    // Update active tab
+    document.querySelectorAll('.tabs .tab').forEach(tab => {
+      if (tab.getAttribute('data-tab') === tabId) {
+        tab.classList.add('tab-active');
+      } else {
+        tab.classList.remove('tab-active');
+      }
+    });
   },
   
   showLoginScreen: function() {
@@ -740,68 +763,6 @@ const ui = {
     });
   },
   
-  displayNotas: function() {
-    const notasContainer = document.getElementById('notas-container');
-    if (!notasContainer) return;
-    
-    notasContainer.innerHTML = '';
-    
-    if (store.notas.length === 0) {
-      // Show "no notes" message with improved styling
-      const emptyMessage = document.createElement('div');
-      emptyMessage.className = 'notes-empty-state';
-      emptyMessage.innerHTML = `
-        <i class="fas fa-sticky-note"></i>
-        <h3>No hay notas guardadas</h3>
-        <p>Crea tu primera nota para empezar a organizar tus ideas</p>
-        <button class="btn btn-primary" id="empty-state-create-note-btn">
-          <i class="fas fa-plus mr-2"></i> Crear Nota
-        </button>
-      `;
-      notasContainer.appendChild(emptyMessage);
-      
-      // Add event listener to the button
-      document.getElementById('empty-state-create-note-btn').addEventListener('click', function() {
-        modalManager.openModal('add-nota-modal');
-      });
-      
-      return;
-    }
-    
-    // Create grid layout for notes
-    const notesGrid = document.createElement('div');
-    notesGrid.className = 'notes-grid'; // Changed from grid classes to our custom class
-    
-    store.notas.forEach(nota => {
-      const notaCard = document.createElement('div');
-      notaCard.className = 'card note-card bg-base-100 shadow-xl';
-      notaCard.innerHTML = `
-        <div class="card-body">
-          <div class="note-actions">
-            <button class="btn btn-sm btn-info btn-note-action edit-nota" data-id="${nota.id}">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button class="btn btn-sm btn-error btn-note-action delete-nota" data-id="${nota.id}">
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
-          <h2 class="card-title">${nota.titulo}</h2>
-          <div class="card-content whitespace-pre-line">${nota.contenido}</div>
-          <div class="card-actions">
-            <div class="note-date">
-              <i class="fas fa-calendar-alt mr-1"></i>
-              ${new Date(nota.fecha).toLocaleString()}
-            </div>
-          </div>
-        </div>
-      `;
-      notesGrid.appendChild(notaCard);
-    });
-    
-    notasContainer.appendChild(notesGrid);
-  },
-  
-  // Analysis display methods - unchanged
   displayDailyAnalysis: function() {
     // Get today's sales
     const today = new Date();
@@ -1176,7 +1137,130 @@ const ui = {
     const receiptHTML = this.generateReceiptHTML(venta, cliente, items);
     document.getElementById('receipt-container').innerHTML = receiptHTML;
     modalManager.openModal('receipt-modal');
-  }
+  },
+  
+  displayCatalog: function() {
+    const catalogContainer = document.getElementById('catalog-container');
+    if (!catalogContainer) return;
+    
+    catalogContainer.innerHTML = '';
+    
+    // If no products
+    if (store.productos.length === 0) {
+      const emptyMessage = document.createElement('div');
+      emptyMessage.className = 'catalog-empty-state';
+      emptyMessage.innerHTML = `
+        <i class="fas fa-box-open"></i>
+        <h3>No hay productos disponibles</h3>
+        <p>Aún no hay productos en el catálogo</p>
+      `;
+      catalogContainer.appendChild(emptyMessage);
+      return;
+    }
+    
+    // Create grid layout for products
+    const productsGrid = document.createElement('div');
+    productsGrid.className = 'catalog-grid';
+    
+    // Sort products by name
+    const sortedProducts = [...store.productos].sort((a, b) => a.nombre.localeCompare(b.nombre));
+    
+    sortedProducts.forEach(producto => {
+      const productCard = document.createElement('div');
+      productCard.className = 'card product-card bg-base-100 shadow-xl';
+      
+      // Check if the product is available
+      const isAvailable = producto.stock > 0;
+      
+      productCard.innerHTML = `
+        <div class="card-body">
+          <h2 class="card-title">
+            ${producto.nombre}
+            ${isAvailable ? 
+              '<div class="badge badge-success">En stock</div>' : 
+              '<div class="badge badge-error">Agotado</div>'}
+          </h2>
+          <p class="product-price">$${parseFloat(producto.precio).toFixed(2)}</p>
+          <div class="card-actions justify-between items-center">
+            <div class="text-sm">
+              <span class="font-semibold">Disponible:</span> ${producto.stock} unidades
+            </div>
+          </div>
+        </div>
+      `;
+      
+      productsGrid.appendChild(productCard);
+    });
+    
+    catalogContainer.appendChild(productsGrid);
+  },
+  
+  filterCatalog: function(searchTerm) {
+    searchTerm = searchTerm.toLowerCase().trim();
+    const container = document.getElementById('catalog-container');
+    if (!container) return;
+    
+    const productCards = container.querySelectorAll('.product-card');
+    productCards.forEach(card => {
+      const productName = card.querySelector('.card-title').textContent.toLowerCase();
+      if (productName.includes(searchTerm)) {
+        card.style.display = '';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  },
+  
+  displayNotas: function() {
+    const container = document.getElementById('notas-container');
+    const emptyState = document.querySelector('.notes-empty-state');
+    
+    if (!container || !emptyState) return;
+    
+    container.innerHTML = '';
+    
+    if (store.notas.length === 0) {
+      // Show empty state
+      emptyState.classList.remove('hidden');
+      container.classList.add('hidden');
+    } else {
+      // Hide empty state and show notes
+      emptyState.classList.add('hidden');
+      container.classList.remove('hidden');
+      
+      // Create notes grid
+      const notesGrid = document.createElement('div');
+      notesGrid.className = 'notes-grid';
+      
+      store.notas.forEach(nota => {
+        const formattedDate = new Date(nota.fecha).toLocaleString();
+        
+        const noteCard = document.createElement('div');
+        noteCard.className = 'card note-card bg-base-100 shadow-xl';
+        noteCard.innerHTML = `
+          <div class="card-body">
+            <h2 class="card-title">${nota.titulo}</h2>
+            <div class="card-content whitespace-pre-line">${nota.contenido}</div>
+            <div class="card-actions">
+              <div class="note-date">${formattedDate}</div>
+              <div>
+                <button class="btn btn-sm btn-info edit-nota" data-id="${nota.id}">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-error delete-nota" data-id="${nota.id}">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        notesGrid.appendChild(noteCard);
+      });
+      
+      container.appendChild(notesGrid);
+    }
+  },
 };
 
 // Business Logic - Updated to use Supabase
@@ -1382,7 +1466,7 @@ const stockManager = {
       loadingManager.show();
       
       const newMovimiento = {
-        producto_id: parseInt(productoId), // Changed from productoId to producto_id
+        producto_id: parseInt(productoId), 
         tipo,
         cantidad: parseInt(cantidad),
         fecha: new Date().toISOString()
@@ -1425,7 +1509,7 @@ const stockManager = {
       // Update in local store (should be updated by subscription, but just in case)
       const mappedMovimiento = {
         ...movimiento,
-        productoId: movimiento.producto_id // Map back for local store consistency
+        productoId: movimiento.producto_id 
       };
       store.movimientosStock.unshift(mappedMovimiento);
       
@@ -1526,7 +1610,7 @@ const ventasManager = {
         success: true, 
         venta: mappedVenta,
         cliente: cliente,
-        items: store.currentCart.slice()  // Copy the cart items for receipt
+        items: store.currentCart.slice()  
       };
     } catch (error) {
       console.error('Error registering sale:', error);
@@ -1722,7 +1806,7 @@ const ventasManager = {
       const { data: fiadosPendientes, error: fiadorError } = await supabase
         .from('ventas')
         .select('*')
-        .eq('cliente_id', parseInt(clienteId)) // Changed from clienteId to cliente_id
+        .eq('cliente_id', parseInt(clienteId)) 
         .eq('fiado', true)
         .eq('pagado', false)
         .order('fecha');
@@ -1748,8 +1832,8 @@ const ventasManager = {
           // Map the response back to our expected format for local store
           const mappedVenta = {
             ...data,
-            clienteId: data.cliente_id, // Map back for local store consistency
-            productoId: data.producto_id // Map back for local store consistency
+            clienteId: data.cliente_id, 
+            productoId: data.producto_id 
           };
           
           ventasActualizadas.push(mappedVenta);
@@ -1804,8 +1888,8 @@ const ventasManager = {
       // Map the response back to our expected format for local store
       const mappedVenta = {
         ...data,
-        clienteId: data.cliente_id, // Map back for local store consistency
-        productoId: data.producto_id // Map back for local store consistency
+        clienteId: data.cliente_id, 
+        productoId: data.producto_id 
       };
       
       // Update in local store (should be updated by subscription, but just in case)
@@ -1868,7 +1952,7 @@ const notasManager = {
       const updateData = {
         titulo,
         contenido,
-        fecha: new Date().toISOString() // Update modified date
+        fecha: new Date().toISOString() 
       };
       
       // Update note in Supabase
@@ -1973,6 +2057,8 @@ document.addEventListener('DOMContentLoaded', function() {
         ui.displayDailyAnalysis();
       } else if (targetSection === 'notas-section') {
         ui.displayNotas();
+      } else if (targetSection === 'catalog-section') {
+        ui.displayCatalog();
       }
     });
   });
@@ -2000,6 +2086,10 @@ document.addEventListener('DOMContentLoaded', function() {
   
   document.getElementById('search-ventas').addEventListener('input', function() {
     ui.filterVentas(this.value);
+  });
+  
+  document.getElementById('search-catalog').addEventListener('input', function() {
+    ui.filterCatalog(this.value);
   });
   
   // Modal events - Fix the closing functionality
@@ -2348,13 +2438,37 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
+  document.getElementById('update-nota-btn').addEventListener('click', async function() {
+    const id = parseInt(document.getElementById('edit-nota-id').value);
+    const titulo = document.getElementById('edit-nota-titulo').value;
+    const contenido = document.getElementById('edit-nota-contenido').value;
+    
+    if (id && titulo && contenido) {
+      const success = await notasManager.editarNota(id, titulo, contenido);
+      if (success) {
+        modalManager.closeAllModals();
+      }
+    } else {
+      alert('Por favor ingresa título y contenido para la nota');
+    }
+  });
+  
+  document.getElementById('confirm-delete-nota-btn').addEventListener('click', async function() {
+    const id = parseInt(document.getElementById('delete-nota-id').value);
+    
+    if (id) {
+      const success = await notasManager.eliminarNota(id);
+      if (success) {
+        modalManager.closeAllModals();
+      }
+    }
+  });
+  
   // Fix for empty state note creation
   document.addEventListener('click', function(e) {
     if (e.target.id === 'empty-state-create-note-btn') {
       modalManager.openModal('add-nota-modal');
     }
-    
-    // ... existing event handlers ...
   });
   
   // Initialize UI with default section
