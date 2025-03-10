@@ -709,7 +709,7 @@ const ui = {
         <td>${new Date(venta.fecha).toLocaleString()}</td>
         <td>${cliente ? cliente.nombre : 'Cliente eliminado'}</td>
         <td>${venta.multipleProducts ? 'Múltiples productos' : (producto ? producto.nombre : 'Producto eliminado')}</td>
-        <td>${venta.multipleProducts ? '-' : venta.cantidad}</td>
+        <td>${venta.multipleProducts ? (JSON.parse(venta.items_json || '[]').reduce((sum, item) => sum + item.cantidad, 0)) : venta.cantidad}</td>
         <td>$${parseFloat(venta.total).toFixed(2)}</td>
         <td>${venta.fiado ? 
           (venta.pagado ? '<span class="badge badge-success">Fiado Pagado</span>' : 
